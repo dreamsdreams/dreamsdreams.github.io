@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Ship Checker</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f4f4f4;
+    }
+    h1 {
+      text-align: center;
+    }
+    form {
+      max-width: 400px;
+      margin: 0 auto;
+      background-color: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+    label {
+      display: block;
+      margin-bottom: 8px;
+    }
+    input[type="text"],
+    select {
+      width: calc(100% - 4px);
+      padding: 8px;
+      margin-bottom: 15px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+    }
+    input[type="reset"],
+    button {
+      padding: 8px 20px;
+      border: none;
+      border-radius: 4px;
+      background-color: #007bff;
+      color: #fff;
+      cursor: pointer;
+    }
+    input[type="reset"]:hover,
+    button:hover {
+      background-color: #0056b3;
+    }
+    #comparisonResult {
+      margin-top: 20px;
+      padding: 10px;
+      border-radius: 4px;
+      background-color: #eee;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Check Ship Stats</h1>
+  
+  <form id="shipForm">
+    <label for="shipType">Choose a Ship:</label>
+    <select id="shipType">
+      <option value="Caravel">Caravel</option>
+      <option value="Brigantine">Brigantine</option>
+      <option value="Nao">Nao</option>
+      <option value="Carrack">Carrack</option>
+      <option value="Cutter">Cutter</option>
+      <option value="Galleon">Galleon</option>
+      <option value="Buss">Buss</option>
+    </select>
+    <br><br>
+    
+    <label for="damageInput">Enter Damage:</label>
+    <input type="text" id="damageInput">
+    <br>
+    
+    <label for="rangeInput">Enter Range:</label>
+    <input type="text" id="rangeInput">
+    <br>
+    
+    <label for="healthInput">Enter Health:</label>
+    <input type="text" id="healthInput">
+    <br>
+    
+    <label for="speedInput">Enter Speed:</label>
+    <input type="text" id="speedInput">
+    <br>
+    
+    <label for="cargoInput">Enter Cargo:</label>
+    <input type="text" id="cargoInput">
+    <br>
+    
+    <label for="suppliesInput">Enter Supplies:</label>
+    <input type="text" id="suppliesInput">
+    <br>
+    
+    <input type="reset" value="Reset">
+    <br><br>
+    
+    <button type="button" onclick="compareValues()">Compare</button>
+  </form>
+  <p id="comparisonResult"></p>
+  
+  <p id="comparisonResult"></p>
+
+  <script>
+    var ships = {
+      "Caravel": {"damage":[0,5], "range":[70,80], "health":[300,500], "speed": [80,99], "cargo": [4,4], "supplies":[300,490]},
+      "Brigantine": {"damage":[5,10], "range":[70,80], "health":[500,700],  "speed": [80,99], "cargo": [4,4], "supplies":[300,490]},
+      "Nao": {"damage":[10,15], "range":[80,90], "health":[1100,1300], "speed": [100,119], "cargo": [3,3], "supplies":[300,490]},
+      "Carrack": {"damage":[15,20], "range":[85,100], "health":[2000,2390], "speed": [85,105], "cargo": [6,6], "supplies":[300,490]},
+      "Cutter": {"damage":[20,25], "range":[100,110], "health":[2500,3490], "speed": [100,124], "cargo": [2,2], "supplies":[300,490]},
+      "Galleon": {"damage":[25,30], "range":[120,130], "health":[3500,5000], "speed": [85,109], "cargo": [3,3], "supplies":[300,490]},
+      "Buss": {"damage":[30,35], "range":[100,110], "health":[5000,6490], "speed": [90,114], "cargo": [8,8], "supplies":[300,490]}
+    };
+
+    function compareValues() {
+      var shipType = document.getElementById("shipType").value;
+      var damage = parseFloat(document.getElementById("damageInput").value);
+      var range = parseFloat(document.getElementById("rangeInput").value);
+      var health = parseFloat(document.getElementById("healthInput").value);
+      var speed = parseFloat(document.getElementById("speedInput").value);
+      var cargo = parseFloat(document.getElementById("cargoInput").value);
+      var supplies = parseFloat(document.getElementById("suppliesInput").value);
+
+      var shipData = ships[shipType];
+
+      var damageProximity = (1 - ((damage - shipData.damage[1]) / (shipData.damage[0] - shipData.damage[1]))).toFixed(2);
+      var rangeProximity = (1 - ((range - shipData.range[1]) / (shipData.range[0] - shipData.range[1]))).toFixed(2);
+      var healthProximity = (1 - ((health - shipData.health[1]) / (shipData.health[0] - shipData.health[1]))).toFixed(2);
+      var speedProximity = (1 - ((speed - shipData.speed[1]) / (shipData.speed[0] - shipData.speed[1]))).toFixed(2);
+      var cargoProximity = (1 - ((cargo - shipData.cargo[1]) / (shipData.cargo[0] - shipData.cargo[1]))).toFixed(2);
+      var suppliesProximity = (1 - ((supplies - shipData.supplies[1]) / (shipData.supplies[0] - shipData.supplies[1]))).toFixed(2);
+
+      if (isNaN(damageProximity)) damageProximity = 1;
+      if (isNaN(rangeProximity)) rangeProximity = 1;
+      if (isNaN(healthProximity)) healthProximity = 1;
+      if (isNaN(speedProximity)) speedProximity = 1;
+      if (isNaN(cargoProximity)) cargoProximity = 1;
+      if (isNaN(suppliesProximity)) suppliesProximity = 1;
+
+      var fullTest = (parseFloat(damageProximity) + parseFloat(rangeProximity) + parseFloat(healthProximity) + parseFloat(speedProximity) + parseFloat(cargoProximity) + parseFloat(suppliesProximity));
+      var average = parseFloat(fullTest) / 6;
+
+      comparisonResult.innerHTML = `
+        Damage: ${damageProximity}<br>
+        Range: ${rangeProximity}<br>
+        Health: ${healthProximity}<br>
+        Speed: ${speedProximity}<br>
+        Cargo: ${cargoProximity}<br>
+        Supplies: ${suppliesProximity}<br>
+        Average Score: ${average}
+      `;
+    }
+  </script>
+</body>
+</html>
