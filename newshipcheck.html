@@ -57,12 +57,30 @@
       border-radius: 4px;
       background-color: #f2f2f2;
     }
+        .container {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    form {
+      flex: 1;
+      margin-right: 20px; /* Adjust the spacing between form and result */
+    }
+    #comparisonResult {
+      flex: 1;
+      padding: 10px;
+      border-radius: 4px;
+      background-color: #f2f2f2;
+    }
   </style>
 </head>
 <body>
 
   <h1>Check Ship Stats</h1>
-  
+
+<div class="container">
   <form id="shipForm">
     <label for="shipType">Choose a Ship:</label>
     <select id="shipType">
@@ -106,7 +124,8 @@
     <button type="button" onclick="compareValues()">Calculate</button>
   </form>
   
-  <p id="comparisonResult"></p>
+    <p id="comparisonResult"></p>
+  </div>
   
   <script>
     var ships = {
