@@ -59,7 +59,7 @@
     }
     .header {
       text-align: left;
-      padding-left: 150px; /* Adding padding to the left */
+      padding-left: 200px;
     }
         .container {
       display: flex;
@@ -70,7 +70,7 @@
     }
     form {
       flex: 1;
-      margin-right: 20px; /* Adjust the spacing between form and result */
+      margin-right: 20px;
     }
     #comparisonResult {
       flex: 1;
@@ -82,7 +82,7 @@
 </head>
 <body>
 
-  <h1 class="header">Check Ship Stats</h1>
+<h1 class="header">Check Ship Stats</h1>
 
 <div class="container">
   <form id="shipForm">
@@ -99,35 +99,26 @@
     <br><br>
     
     <label for="damageInput">Enter Damage:</label>
-    <input type="text" id="damageInput">
-    <br>
+    <input type="text" id="damageInput"><br>
     
     <label for="rangeInput">Enter Range:</label>
-    <input type="text" id="rangeInput">
-    <br>
+    <input type="text" id="rangeInput"><br>
     
     <label for="healthInput">Enter Health:</label>
-    <input type="text" id="healthInput">
-    <br>
+    <input type="text" id="healthInput"><br>
     
     <label for="speedInput">Enter Speed:</label>
-    <input type="text" id="speedInput">
-    <br>
+    <input type="text" id="speedInput"><br>
     
     <label for="cargoInput">Enter Cargo:</label>
-    <input type="text" id="cargoInput">
-    <br>
+    <input type="text" id="cargoInput"><br>
     
     <label for="suppliesInput">Enter Supplies:</label>
-    <input type="text" id="suppliesInput">
-    <br>
+    <input type="text" id="suppliesInput"><br>
     
-    <input type="reset" value="Reset">
-    <br><br>
-    
+    <input type="reset" value="Reset"><br><br>
     <button type="button" onclick="compareValues()">Calculate</button>
   </form>
-  
     <p id="comparisonResult"></p>
   </div>
   
@@ -177,8 +168,7 @@
         Speed: ${speedProximity}<br>
         Cargo: ${cargoProximity}<br>
         Supplies: ${suppliesProximity}<br>
-        Average Score: ${average}
-      `;
+        Average Score: ${average} `;
     }
   </script>
 </body>
