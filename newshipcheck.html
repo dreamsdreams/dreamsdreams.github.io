@@ -8,7 +8,7 @@
       font-family: Arial, sans-serif;
       margin: 0;
       padding: 20px;
-      background-color: #f4f4f4;
+      background-color: #f7f7f7;
     }
     h1 {
       text-align: center;
@@ -16,32 +16,36 @@
     form {
       max-width: 400px;
       margin: 0 auto;
-      background-color: #fff;
       padding: 20px;
       border-radius: 8px;
       box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      background-color: #fff;
     }
     label {
       display: block;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
+      font-weight: bold;
     }
     input[type="text"],
     select {
-      width: calc(100% - 4px);
+      width: calc(100% - 8px);
       padding: 8px;
       margin-bottom: 10px;
       border-radius: 4px;
       border: 1px solid #ccc;
       box-sizing: border-box;
+      font-size: 16px;
     }
     input[type="reset"],
     button {
-      padding: 8px 20px;
+      padding: 10px 20px;
       border: none;
       border-radius: 4px;
       background-color: #007bff;
       color: #fff;
       cursor: pointer;
+      font-size: 16px;
+      transition: background-color 0.3s ease;
     }
     input[type="reset"]:hover,
     button:hover {
@@ -51,7 +55,7 @@
       margin-top: 20px;
       padding: 10px;
       border-radius: 4px;
-      background-color: #eee;
+      background-color: #f2f2f2;
     }
   </style>
 </head>
@@ -101,10 +105,9 @@
     
     <button type="button" onclick="compareValues()">Calculate</button>
   </form>
-  <p id="comparisonResult"></p>
   
   <p id="comparisonResult"></p>
-
+  
   <script>
     var ships = {
       "Caravel": {"damage":[0,5], "range":[70,80], "health":[300,500], "speed": [80,99], "cargo": [4,4], "supplies":[300,490]},
