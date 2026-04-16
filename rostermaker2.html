@@ -28,19 +28,9 @@
       max-width: 620px;
     }
 
-    h1 {
-      font-size: 20px;
-      font-weight: 500;
-      margin-bottom: 0.25rem;
-      color: #1a1a18;
-    }
+    h1 { font-size: 20px; font-weight: 500; margin-bottom: 0.25rem; color: #1a1a18; }
 
-    .subtitle {
-      font-size: 14px;
-      color: #666;
-      margin-bottom: 1.5rem;
-      line-height: 1.5;
-    }
+    .subtitle { font-size: 14px; color: #666; margin-bottom: 1.5rem; line-height: 1.5; }
 
     #drop-zone {
       border: 1.5px dashed #bbb;
@@ -51,19 +41,13 @@
       transition: background 0.15s, border-color 0.15s;
     }
 
-    #drop-zone:hover, #drop-zone.dragover {
-      background: #f5f5f3;
-      border-color: #888;
-    }
+    #drop-zone:hover, #drop-zone.dragover { background: #f5f5f3; border-color: #888; }
 
     .drop-icon { font-size: 32px; margin-bottom: 0.5rem; line-height: 1; }
     .drop-title { font-size: 15px; font-weight: 500; margin-bottom: 4px; }
     .drop-hint { font-size: 13px; color: #888; }
 
-    #status-area {
-      display: none;
-      margin-top: 1.25rem;
-    }
+    #status-area { display: none; margin-top: 1.25rem; }
 
     .status-box {
       background: #f9f9f7;
@@ -85,49 +69,27 @@
     .status-row span:last-child { font-weight: 500; color: #1a1a18; }
 
     .download-btn {
-      display: block;
-      width: 100%;
-      margin-top: 1rem;
-      padding: 10px;
-      font-size: 14px;
-      font-weight: 500;
-      font-family: inherit;
-      background: #1a1a18;
-      color: #fff;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-      transition: background 0.12s;
+      display: block; width: 100%; margin-top: 1rem; padding: 10px;
+      font-size: 14px; font-weight: 500; font-family: inherit;
+      background: #1a1a18; color: #fff; border: none; border-radius: 10px;
+      cursor: pointer; transition: background 0.12s;
     }
 
     .download-btn:hover { background: #333; }
     .download-btn:active { transform: scale(0.99); }
 
     .reset-btn {
-      display: block;
-      width: 100%;
-      margin-top: 0.5rem;
-      padding: 8px;
-      font-size: 13px;
-      font-family: inherit;
-      background: transparent;
-      color: #888;
-      border: 0.5px solid rgba(0,0,0,0.15);
-      border-radius: 10px;
-      cursor: pointer;
-      transition: background 0.12s;
+      display: block; width: 100%; margin-top: 0.5rem; padding: 8px;
+      font-size: 13px; font-family: inherit; background: transparent;
+      color: #888; border: 0.5px solid rgba(0,0,0,0.15); border-radius: 10px;
+      cursor: pointer; transition: background 0.12s;
     }
 
     .reset-btn:hover { background: #f0f0ee; }
 
     #error-msg {
-      display: none;
-      color: #a32d2d;
-      font-size: 13px;
-      margin-top: 0.75rem;
-      padding: 10px 14px;
-      background: #fcebeb;
-      border-radius: 8px;
+      display: none; color: #a32d2d; font-size: 13px; margin-top: 0.75rem;
+      padding: 10px 14px; background: #fcebeb; border-radius: 8px;
     }
   </style>
 </head>
@@ -157,7 +119,7 @@
         <div class="status-row"><span>Remaining columns</span><span id="s-remaining">—</span></div>
         <div class="status-row"><span>Rows</span><span id="s-rows">—</span></div>
       </div>
-      <button class="download-btn" id="download-btn" onclick="downloadFile()">Download cleaned file (.xlsx)</button>
+      <button class="download-btn" onclick="downloadFile()">Download cleaned file (.xlsx)</button>
       <button class="reset-btn" onclick="resetTool()">Upload another file</button>
     </div>
   </div>
@@ -166,12 +128,9 @@
     let outputWorkbook = null;
     let outputFilename = 'cleaned.xlsx';
 
-    // Columns to remove (0-indexed):
-    // E=4, F=5, G=6, J=9, K=10, L=11, M=12, N=13, O=14, P=15, Q=16, S=18, T=19, U=20
+    // Columns to remove (0-indexed): E=4, F=5, G=6, J=9, K=10, L=11, M=12, N=13, O=14, P=15, Q=16, S=18, T=19, U=20
     // Keep R=17
     const COLS_TO_REMOVE = new Set([4, 5, 6, 9, 10, 11, 12, 13, 14, 15, 16, 18, 19, 20]);
-
-    // Column H (0-indexed: 7) — extract chars 13–21 (slice(12, 21)) and rename to "Staff Trainer"
     const COL_H_INDEX = 7;
 
     function handleDrop(e) {
@@ -185,7 +144,6 @@
       if (!file) return;
       const isTsv = file.name.toLowerCase().endsWith('.tsv');
       const reader = new FileReader();
-
       reader.onload = function(e) {
         try {
           let wb;
@@ -195,18 +153,15 @@
           } else {
             wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array', cellDates: true });
           }
-
           const result = processWorkbook(wb);
           outputWorkbook = result.wb;
           outputFilename = file.name.replace(/\.[^.]+$/, '') + '_cleaned.xlsx';
-
           showStatus(file.name, result.stats);
           document.getElementById('error-msg').style.display = 'none';
         } catch(err) {
           showError('Could not read file. Make sure it\'s a valid Excel or TSV file.');
         }
       };
-
       reader.readAsArrayBuffer(file);
     }
 
@@ -225,6 +180,7 @@
         const numOrigCols = range.e.c + 1;
         const numRows = range.e.r + 1;
 
+        // Build cleaned data array
         const newData = [];
         for (let r = range.s.r; r <= range.e.r; r++) {
           const newRow = [];
@@ -233,16 +189,14 @@
               const cell = ws[XLSX.utils.encode_cell({ r, c })];
               let val = cell ? cell.v : null;
 
-              // Column H (index 7): header row -> rename; data rows -> slice chars 13-21
               if (c === COL_H_INDEX) {
                 if (r === range.s.r) {
                   val = 'Staff Trainer';
                 } else if (val !== null && val !== undefined) {
-                  val = String(val).slice(12, 21);
+                  val = String(val).slice(12, 33);
                 }
               }
 
-              // Format column A (index 0) datetime
               if (c === 0 && val instanceof Date) {
                 val = val.toLocaleString();
               }
@@ -254,10 +208,12 @@
         }
 
         const newWs = XLSX.utils.aoa_to_sheet(newData);
+        const numNewCols = newData[0] ? newData[0].length : 0;
+        const numNewRows = newData.length;
 
         // Auto-fit column widths
         const colWidths = [];
-        for (let c = 0; c < newData[0].length; c++) {
+        for (let c = 0; c < numNewCols; c++) {
           let maxLen = 10;
           for (let r = 0; r < newData.length; r++) {
             const val = newData[r][c];
@@ -270,13 +226,41 @@
         }
         newWs['!cols'] = colWidths;
 
+        // Register as an Excel Table with a grey banded style
+        const tableRef = XLSX.utils.encode_range({
+          s: { r: 0, c: 0 },
+          e: { r: numNewRows - 1, c: numNewCols - 1 }
+        });
+
+        // Build column definitions from header row
+        const tableCols = (newData[0] || []).map(function(h, i) {
+          return { name: h !== null && h !== undefined ? String(h) : ('Column' + (i + 1)) };
+        });
+
+        // Attach the table definition to the worksheet
+        // TableStyleMedium15 is a grey banded built-in Excel style
+        newWs['!tables'] = [{
+          name: 'CleanedData',
+          ref: tableRef,
+          headerRow: true,
+          totalsRow: false,
+          style: {
+            name: 'TableStyleMedium15',
+            showFirstColumn: false,
+            showLastColumn: false,
+            showRowStripes: true,
+            showColumnStripes: false
+          },
+          columns: tableCols
+        }];
+
         XLSX.utils.book_append_sheet(newWb, newWs, sheetName);
 
         const removedCount = Array.from(COLS_TO_REMOVE).filter(c => c <= range.e.c).length;
         totalStats.origCols = numOrigCols;
         totalStats.removed = removedCount;
         totalStats.remaining = numOrigCols - removedCount;
-        totalStats.rows = numRows - 1;
+        totalStats.rows = numNewRows - 1;
       });
 
       return { wb: newWb, stats: totalStats };
