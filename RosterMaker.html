@@ -171,7 +171,6 @@
     return { data: allData, stats: totalStats };
   }
 
-  // Convert column index to Excel letter(s) e.g. 0->A, 25->Z, 26->AA
   function colLetter(n) {
     let s = '';
     n++;
@@ -193,16 +192,42 @@
       .replace(/'/g, '&apos;');
   }
 
+  // Ensure all header names are non-empty, unique, and safe for Excel table columns
+  function sanitizeHeaders(headerRow) {
+    const seen = {};
+    return headerRow.map(function(h, i) {
+      // Fallback for blank/null headers
+      let name = (h !== null && h !== undefined && String(h).trim() !== '')
+        ? String(h).trim()
+        : ('Column' + (i + 1));
+
+      // Strip any characters Excel doesn't allow in table column names
+      // (single quotes at start are disallowed; brackets are disallowed)
+      name = name.replace(/[\[\]']/g, '');
+      if (name === '') name = 'Column' + (i + 1);
+
+      // Deduplicate: if name already used, append _2, _3, etc.
+      const base = name;
+      let counter = 2;
+      while (seen[name.toLowerCase()]) {
+        name = base + '_' + counter;
+        counter++;
+      }
+      seen[name.toLowerCase()] = true;
+      return name;
+    });
+  }
+
   function buildXlsx(data, stats, origName) {
     if (!data || data.length === 0) { showError('No data found.'); return; }
 
-    const numRows = data.length;      // includes header
+    const numRows = data.length;
     const numCols = data[0].length;
     const lastCol = colLetter(numCols - 1);
     const tableRef = 'A1:' + lastCol + numRows;
 
-    // ---- shared strings ----
-    // We'll use inline strings (t="inlineStr") to keep things simple — no shared strings needed.
+    // Sanitize headers before writing
+    const headers = sanitizeHeaders(data[0]);
 
     // ---- sheet XML ----
     let sheetDataRows = '';
@@ -211,10 +236,11 @@
       let cells = '';
       for (let c = 0; c < numCols; c++) {
         const cellRef = colLetter(c) + excelRow;
-        const val = data[r][c];
+        // For header row use sanitized names
+        const val = (r === 0) ? headers[c] : data[r][c];
         if (val === null || val === undefined || val === '') continue;
-        const num = (r > 0) && (typeof val === 'number');
-        if (num) {
+        const isNum = (r > 0) && (typeof val === 'number');
+        if (isNum) {
           cells += '<c r="' + cellRef + '"><v>' + val + '</v></c>';
         } else {
           cells += '<c r="' + cellRef + '" t="inlineStr"><is><t>' + escapeXml(val) + '</t></is></c>';
@@ -223,12 +249,12 @@
       sheetDataRows += '<row r="' + excelRow + '">' + cells + '</row>';
     }
 
-    // Auto column widths based on max char length
+    // Auto column widths
     let colDefs = '<cols>';
     for (let c = 0; c < numCols; c++) {
       let maxLen = 8;
       for (let r = 0; r < numRows; r++) {
-        const v = data[r][c];
+        const v = (r === 0) ? headers[c] : data[r][c];
         if (v !== null && v !== undefined) {
           const l = String(v).length;
           if (l > maxLen) maxLen = l;
@@ -248,14 +274,11 @@
       + '</worksheet>';
 
     // ---- table XML ----
-    // Build column elements
     let tableCols = '';
     for (let c = 0; c < numCols; c++) {
-      const header = escapeXml(data[0][c] !== null && data[0][c] !== undefined ? data[0][c] : 'Column' + (c+1));
-      tableCols += '<tableColumn id="' + (c+1) + '" name="' + header + '"/>';
+      tableCols += '<tableColumn id="' + (c+1) + '" name="' + escapeXml(headers[c]) + '"/>';
     }
 
-    // TableStyleMedium15 = grey banded style built into Excel
     const tableXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
       + '<table xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"'
       + ' id="1" name="CleanedData" displayName="CleanedData" ref="' + tableRef + '"'
@@ -266,14 +289,13 @@
       + ' showRowStripes="1" showColumnStripes="0"/>'
       + '</table>';
 
-    // ---- sheet rels ----
+    // ---- rels & support files ----
     const sheetRelsXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
       + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
       + '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/table"'
       + ' Target="../tables/table1.xml"/>'
       + '</Relationships>';
 
-    // ---- workbook XML ----
     const workbookXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
       + '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"'
       + ' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
@@ -301,7 +323,6 @@
       + ' Target="xl/workbook.xml"/>'
       + '</Relationships>';
 
-    // ---- assemble zip ----
     const zip = new JSZip();
     zip.file('[Content_Types].xml', contentTypesXml);
     zip.file('_rels/.rels', relsXml);
