@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Excel Column Cleaner</title>
+  <title>Bookings to Roster</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <style>
@@ -81,8 +81,8 @@
 </head>
 <body>
 <div class="card">
-  <h1>Excel Column Cleaner</h1>
-  <p class="subtitle">Upload an Excel or TSV file to clean and download.</p>
+  <h1>Bookings to Printable Provider Roster</h1>
+  <p class="subtitle">Upload an Excel or CSV from Microsoft Bookings to reformat.</p>
   <div id="drop-zone"
     onclick="document.getElementById('file-input').click()"
     ondragover="event.preventDefault();this.classList.add('dragover')"
@@ -97,15 +97,12 @@
   <div id="status-area">
     <div class="status-box">
       <div class="status-row"><span>File</span><span id="s-filename">—</span></div>
-      <div class="status-row"><span>Original columns</span><span id="s-orig-cols">—</span></div>
-      <div class="status-row"><span>Columns removed</span><span id="s-removed">—</span></div>
-      <div class="status-row"><span>Remaining columns</span><span id="s-remaining">—</span></div>
       <div class="status-row"><span>Rows</span><span id="s-rows">—</span></div>
     </div>
   </div>
   <div id="filter-area">
     <div class="filter-label">
-      <span>Filter by Custom Fields</span>
+      <span>Filter by Facility</span>
       <span>
         <a onclick="selectAll()">Select all</a>&nbsp;·&nbsp;<a onclick="selectNone()">Clear</a>
       </span>
