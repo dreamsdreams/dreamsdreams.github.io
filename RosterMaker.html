@@ -64,6 +64,12 @@
       border-color: rgba(163,45,45,0.2);
     }
 
+    .tag.truncated {
+      background: #fef6e4;
+      color: #7a5100;
+      border-color: rgba(122,81,0,0.2);
+    }
+
     #drop-zone {
       border: 1.5px dashed #bbb;
       border-radius: 12px;
@@ -156,12 +162,13 @@
 <body>
   <div class="card">
     <h1>Excel Column Cleaner</h1>
-    <p class="subtitle">Upload an Excel or TSV file. The following columns will be removed, and all remaining columns will be auto-fitted to their content width.</p>
+    <p class="subtitle">Upload an Excel or TSV file. The following columns will be removed or modified, and all remaining columns will be auto-fitted to their content width.</p>
 
     <div class="tag-list">
       <span class="tag removed">E — removed</span>
       <span class="tag removed">F — removed</span>
-      <span class="tag removed">G — removed</span>
+      <span class="tag truncated">G — truncated to 30 chars</span>
+      <span class="tag removed">H — removed</span>
       <span class="tag removed">J – U — removed</span>
       <span class="tag">All others — kept</span>
     </div>
@@ -196,8 +203,11 @@
     let outputWorkbook = null;
     let outputFilename = 'cleaned.xlsx';
 
-    // Columns to delete (0-indexed): E=4, F=5, G=6, J=9, K=10, L=11, M=12, N=13, O=14, P=15, Q=16, R=17, S=18, T=19, U=20
-    const COLS_TO_REMOVE = new Set([4, 5, 6, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]);
+    // Columns to delete (0-indexed): E=4, F=5, H=7, J=9, K=10, L=11, M=12, N=13, O=14, P=15, Q=16, R=17, S=18, T=19, U=20
+    const COLS_TO_REMOVE = new Set([4, 5, 7, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]);
+
+    // Column G (0-indexed: 6) should be truncated to 30 characters
+    const COL_G_INDEX = 6;
 
     function handleDrop(e) {
       e.preventDefault();
@@ -257,7 +267,12 @@
           for (let c = range.s.c; c <= range.e.c; c++) {
             if (!COLS_TO_REMOVE.has(c)) {
               const cell = ws[XLSX.utils.encode_cell({ r, c })];
-              newRow.push(cell ? cell.v : null);
+              let val = cell ? cell.v : null;
+              // Truncate column G (index 6) to first 30 characters
+              if (c === COL_G_INDEX && val !== null && val !== undefined) {
+                val = String(val).slice(0, 30);
+              }
+              newRow.push(val);
             }
           }
           newData.push(newRow);
