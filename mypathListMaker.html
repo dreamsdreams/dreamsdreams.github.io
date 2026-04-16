@@ -282,15 +282,6 @@
       });
     }
 
-    function downloadTxt() {
-      const text = extractedValues.map(function(v) { return v + ','; }).join('\n');
-      const blob = new Blob([text], { type: 'text/plain' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = 'column_j_values.txt';
-      a.click();
-    }
-
     function resetTool() {
       extractedValues = [];
       document.getElementById('result-area').style.display = 'none';
