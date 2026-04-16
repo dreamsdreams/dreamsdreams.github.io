@@ -259,7 +259,7 @@
         container.innerHTML = '<p class="empty-msg">No values found in column J starting from row 2.</p>';
       } else {
         container.innerHTML = values.map(function(v, i) {
-          return '<div class="list-row"><span class="row-ref">J' + (i + 2) + '</span><span class="row-value">' + escapeHtml(String(v)) + '</span></div>';
+          return '<div class="list-row"><span class="row-ref">J' + (i + 2) + '</span><span class="row-value">' + escapeHtml(String(v)) + ',</span></div>';
         }).join('');
       }
 
@@ -275,7 +275,7 @@
     }
 
     function copyList(btn) {
-      const text = extractedValues.join('\n');
+      const text = extractedValues.map(function(v) { return v + ','; }).join('\n');
       navigator.clipboard.writeText(text).then(function() {
         btn.textContent = 'Copied!';
         setTimeout(function() { btn.textContent = 'Copy list'; }, 1500);
@@ -283,7 +283,7 @@
     }
 
     function downloadTxt() {
-      const text = extractedValues.join('\n');
+      const text = extractedValues.map(function(v) { return v + ','; }).join('\n');
       const blob = new Blob([text], { type: 'text/plain' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
