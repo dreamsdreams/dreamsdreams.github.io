@@ -25,7 +25,7 @@
       border: 0.5px solid rgba(0,0,0,0.12);
       padding: 2rem;
       width: 100%;
-      max-width: 900px;
+      max-width: 620px;
     }
 
     h1 {
@@ -151,79 +151,6 @@
       background: #fcebeb;
       border-radius: 8px;
     }
-
-    /* Table preview */
-    #table-preview-area {
-      display: none;
-      margin-top: 1.5rem;
-    }
-
-    .table-preview-label {
-      font-size: 13px;
-      font-weight: 500;
-      color: #555;
-      margin-bottom: 0.5rem;
-    }
-
-    .table-scroll {
-      overflow-x: auto;
-      border-radius: 10px;
-      border: 0.5px solid rgba(0,0,0,0.12);
-    }
-
-    #preview-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 13px;
-      min-width: 400px;
-    }
-
-    #preview-table thead tr {
-      background: #4a4a47;
-    }
-
-    #preview-table thead th {
-      color: #ffffff;
-      font-weight: 500;
-      padding: 9px 12px;
-      text-align: center;
-      border-right: 0.5px solid rgba(255,255,255,0.15);
-      white-space: nowrap;
-    }
-
-    #preview-table thead th:last-child {
-      border-right: none;
-    }
-
-    #preview-table tbody tr:nth-child(odd) {
-      background: #f0f0ee;
-    }
-
-    #preview-table tbody tr:nth-child(even) {
-      background: #e0e0dd;
-    }
-
-    #preview-table tbody tr:hover {
-      background: #d3d3cf;
-    }
-
-    #preview-table tbody td {
-      padding: 7px 12px;
-      text-align: center;
-      color: #1a1a18;
-      border-right: 0.5px solid rgba(0,0,0,0.07);
-    }
-
-    #preview-table tbody td:last-child {
-      border-right: none;
-    }
-
-    .table-note {
-      font-size: 12px;
-      color: #999;
-      margin-top: 6px;
-      text-align: right;
-    }
   </style>
 </head>
 <body>
@@ -263,25 +190,14 @@
       <button class="download-btn" id="download-btn" onclick="downloadFile()">Download cleaned file (.xlsx)</button>
       <button class="reset-btn" onclick="resetTool()">Upload another file</button>
     </div>
-
-    <div id="table-preview-area">
-      <p class="table-preview-label">Preview</p>
-      <div class="table-scroll">
-        <table id="preview-table">
-          <thead id="preview-thead"></thead>
-          <tbody id="preview-tbody"></tbody>
-        </table>
-      </div>
-      <p class="table-note" id="table-note"></p>
-    </div>
   </div>
 
   <script>
     let outputWorkbook = null;
     let outputFilename = 'cleaned.xlsx';
 
+    // Columns to delete (0-indexed): E=4, F=5, G=6, J=9, K=10, L=11, M=12, N=13, O=14, P=15, Q=16, R=17, S=18, T=19, U=20
     const COLS_TO_REMOVE = new Set([4, 5, 6, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]);
-    const MAX_PREVIEW_ROWS = 100;
 
     function handleDrop(e) {
       e.preventDefault();
@@ -310,7 +226,6 @@
           outputFilename = file.name.replace(/\.[^.]+$/, '') + '_cleaned.xlsx';
 
           showStatus(file.name, result.stats);
-          renderPreview(result.previewData);
           document.getElementById('error-msg').style.display = 'none';
         } catch(err) {
           showError('Could not read file. Make sure it\'s a valid Excel or TSV file.');
@@ -323,7 +238,6 @@
     function processWorkbook(wb) {
       const newWb = XLSX.utils.book_new();
       let totalStats = { origCols: 0, removed: 0, remaining: 0, rows: 0 };
-      let previewData = [];
 
       wb.SheetNames.forEach(function(sheetName) {
         const ws = wb.Sheets[sheetName];
@@ -336,6 +250,7 @@
         const numOrigCols = range.e.c + 1;
         const numRows = range.e.r + 1;
 
+        // Build new sheet data keeping only non-removed columns
         const newData = [];
         for (let r = range.s.r; r <= range.e.r; r++) {
           const newRow = [];
@@ -348,10 +263,9 @@
           newData.push(newRow);
         }
 
-        previewData = newData;
-
         const newWs = XLSX.utils.aoa_to_sheet(newData);
 
+        // Auto-fit column widths based on content
         const colWidths = [];
         for (let c = 0; c < newData[0].length; c++) {
           let maxLen = 10;
@@ -372,50 +286,10 @@
         totalStats.origCols = numOrigCols;
         totalStats.removed = removedCount;
         totalStats.remaining = numOrigCols - removedCount;
-        totalStats.rows = numRows - 1;
+        totalStats.rows = numRows - 1; // exclude header
       });
 
-      return { wb: newWb, stats: totalStats, previewData };
-    }
-
-    function renderPreview(data) {
-      if (!data || data.length === 0) return;
-
-      const thead = document.getElementById('preview-thead');
-      const tbody = document.getElementById('preview-tbody');
-      thead.innerHTML = '';
-      tbody.innerHTML = '';
-
-      const headers = data[0];
-      const headerRow = document.createElement('tr');
-      headers.forEach(function(h) {
-        const th = document.createElement('th');
-        th.textContent = h !== null && h !== undefined ? String(h) : '';
-        headerRow.appendChild(th);
-      });
-      thead.appendChild(headerRow);
-
-      const dataRows = data.slice(1);
-      const displayRows = dataRows.slice(0, MAX_PREVIEW_ROWS);
-
-      displayRows.forEach(function(row) {
-        const tr = document.createElement('tr');
-        row.forEach(function(cell) {
-          const td = document.createElement('td');
-          td.textContent = cell !== null && cell !== undefined ? String(cell) : '';
-          tr.appendChild(td);
-        });
-        tbody.appendChild(tr);
-      });
-
-      const noteEl = document.getElementById('table-note');
-      if (dataRows.length > MAX_PREVIEW_ROWS) {
-        noteEl.textContent = 'Showing first ' + MAX_PREVIEW_ROWS + ' of ' + dataRows.length + ' rows. Download the file for all data.';
-      } else {
-        noteEl.textContent = dataRows.length + ' rows shown.';
-      }
-
-      document.getElementById('table-preview-area').style.display = 'block';
+      return { wb: newWb, stats: totalStats };
     }
 
     function showStatus(filename, stats) {
@@ -437,14 +311,12 @@
       el.textContent = msg;
       el.style.display = 'block';
       document.getElementById('status-area').style.display = 'none';
-      document.getElementById('table-preview-area').style.display = 'none';
     }
 
     function resetTool() {
       outputWorkbook = null;
       document.getElementById('status-area').style.display = 'none';
       document.getElementById('error-msg').style.display = 'none';
-      document.getElementById('table-preview-area').style.display = 'none';
       document.getElementById('file-input').value = '';
     }
   </script>
