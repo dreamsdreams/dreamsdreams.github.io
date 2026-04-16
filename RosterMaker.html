@@ -226,9 +226,9 @@
           let wb;
           if (isTsv) {
             const text = new TextDecoder('utf-8').decode(new Uint8Array(e.target.result));
-            wb = XLSX.read(text, { type: 'string', FS: '\t' });
+            wb = XLSX.read(text, { type: 'string', FS: '\t', cellDates: true });
           } else {
-            wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+            wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array', cellDates: true });
           }
 
           const result = processWorkbook(wb);
@@ -271,6 +271,10 @@
               // Truncate column G (index 6) to first 30 characters
               if (c === COL_G_INDEX && val !== null && val !== undefined) {
                 val = String(val).slice(0, 30);
+              }
+              // Format column A (index 0) datetime
+              if (c === 0 && val instanceof Date) {
+                val = val.toLocaleString();
               }
               newRow.push(val);
             }
