@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Excel Column Cleaner</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f5f5f3;
+      color: #1a1a18;
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 3rem 1rem;
+    }
+
+    .card {
+      background: #ffffff;
+      border-radius: 16px;
+      border: 0.5px solid rgba(0,0,0,0.12);
+      padding: 2rem;
+      width: 100%;
+      max-width: 620px;
+    }
+
+    h1 {
+      font-size: 20px;
+      font-weight: 500;
+      margin-bottom: 0.25rem;
+      color: #1a1a18;
+    }
+
+    .subtitle {
+      font-size: 14px;
+      color: #666;
+      margin-bottom: 1.5rem;
+      line-height: 1.5;
+    }
+
+    #drop-zone {
+      border: 1.5px dashed #bbb;
+      border-radius: 12px;
+      padding: 2.5rem 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    #drop-zone:hover, #drop-zone.dragover {
+      background: #f5f5f3;
+      border-color: #888;
+    }
+
+    .drop-icon { font-size: 32px; margin-bottom: 0.5rem; line-height: 1; }
+    .drop-title { font-size: 15px; font-weight: 500; margin-bottom: 4px; }
+    .drop-hint { font-size: 13px; color: #888; }
+
+    #status-area {
+      display: none;
+      margin-top: 1.25rem;
+    }
+
+    .status-box {
+      background: #f9f9f7;
+      border-radius: 10px;
+      border: 0.5px solid rgba(0,0,0,0.1);
+      padding: 1rem 1.25rem;
+    }
+
+    .status-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      padding: 4px 0;
+      border-bottom: 0.5px solid rgba(0,0,0,0.06);
+      color: #555;
+    }
+
+    .status-row:last-child { border-bottom: none; }
+    .status-row span:last-child { font-weight: 500; color: #1a1a18; }
+
+    .download-btn {
+      display: block;
+      width: 100%;
+      margin-top: 1rem;
+      padding: 10px;
+      font-size: 14px;
+      font-weight: 500;
+      font-family: inherit;
+      background: #1a1a18;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.12s;
+    }
+
+    .download-btn:hover { background: #333; }
+    .download-btn:active { transform: scale(0.99); }
+
+    .reset-btn {
+      display: block;
+      width: 100%;
+      margin-top: 0.5rem;
+      padding: 8px;
+      font-size: 13px;
+      font-family: inherit;
+      background: transparent;
+      color: #888;
+      border: 0.5px solid rgba(0,0,0,0.15);
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.12s;
+    }
+
+    .reset-btn:hover { background: #f0f0ee; }
+
+    #error-msg {
+      display: none;
+      color: #a32d2d;
+      font-size: 13px;
+      margin-top: 0.75rem;
+      padding: 10px 14px;
+      background: #fcebeb;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Excel Column Cleaner</h1>
+    <p class="subtitle">Upload an Excel or TSV file to clean and download.</p>
+
+    <div id="drop-zone"
+      onclick="document.getElementById('file-input').click()"
+      ondragover="event.preventDefault();this.classList.add('dragover')"
+      ondragleave="this.classList.remove('dragover')"
+      ondrop="handleDrop(event)">
+      <div class="drop-icon">📄</div>
+      <p class="drop-title">Drop your file here</p>
+      <p class="drop-hint">or click to browse — .xlsx, .xls, .tsv supported</p>
+      <input type="file" id="file-input" accept=".xlsx,.xls,.tsv" style="display:none" onchange="handleFile(this.files[0])">
+    </div>
+
+    <div id="error-msg"></div>
+
+    <div id="status-area">
+      <div class="status-box">
+        <div class="status-row"><span>File</span><span id="s-filename">—</span></div>
+        <div class="status-row"><span>Original columns</span><span id="s-orig-cols">—</span></div>
+        <div class="status-row"><span>Columns removed</span><span id="s-removed">—</span></div>
+        <div class="status-row"><span>Remaining columns</span><span id="s-remaining">—</span></div>
+        <div class="status-row"><span>Rows</span><span id="s-rows">—</span></div>
+      </div>
+      <button class="download-btn" id="download-btn" onclick="downloadFile()">Download cleaned file (.xlsx)</button>
+      <button class="reset-btn" onclick="resetTool()">Upload another file</button>
+    </div>
+  </div>
+
+  <script>
+    let outputWorkbook = null;
+    let outputFilename = 'cleaned.xlsx';
+
+    // Columns to remove (0-indexed):
+    // E=4, F=5, G=6, J=9, K=10, L=11, M=12, N=13, O=14, P=15, Q=16, S=18, T=19, U=20
+    // Keep R=17
+    const COLS_TO_REMOVE = new Set([4, 5, 6, 9, 10, 11, 12, 13, 14, 15, 16, 18, 19, 20]);
+
+    // Column H (0-indexed: 7) — extract chars 13–21 (slice(12, 21)) and rename to "Staff Trainer"
+    const COL_H_INDEX = 7;
+
+    function handleDrop(e) {
+      e.preventDefault();
+      document.getElementById('drop-zone').classList.remove('dragover');
+      const file = e.dataTransfer.files[0];
+      if (file) handleFile(file);
+    }
+
+    function handleFile(file) {
+      if (!file) return;
+      const isTsv = file.name.toLowerCase().endsWith('.tsv');
+      const reader = new FileReader();
+
+      reader.onload = function(e) {
+        try {
+          let wb;
+          if (isTsv) {
+            const text = new TextDecoder('utf-8').decode(new Uint8Array(e.target.result));
+            wb = XLSX.read(text, { type: 'string', FS: '\t', cellDates: true });
+          } else {
+            wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array', cellDates: true });
+          }
+
+          const result = processWorkbook(wb);
+          outputWorkbook = result.wb;
+          outputFilename = file.name.replace(/\.[^.]+$/, '') + '_cleaned.xlsx';
+
+          showStatus(file.name, result.stats);
+          document.getElementById('error-msg').style.display = 'none';
+        } catch(err) {
+          showError('Could not read file. Make sure it\'s a valid Excel or TSV file.');
+        }
+      };
+
+      reader.readAsArrayBuffer(file);
+    }
+
+    function processWorkbook(wb) {
+      const newWb = XLSX.utils.book_new();
+      let totalStats = { origCols: 0, removed: 0, remaining: 0, rows: 0 };
+
+      wb.SheetNames.forEach(function(sheetName) {
+        const ws = wb.Sheets[sheetName];
+        if (!ws['!ref']) {
+          XLSX.utils.book_append_sheet(newWb, ws, sheetName);
+          return;
+        }
+
+        const range = XLSX.utils.decode_range(ws['!ref']);
+        const numOrigCols = range.e.c + 1;
+        const numRows = range.e.r + 1;
+
+        const newData = [];
+        for (let r = range.s.r; r <= range.e.r; r++) {
+          const newRow = [];
+          for (let c = range.s.c; c <= range.e.c; c++) {
+            if (!COLS_TO_REMOVE.has(c)) {
+              const cell = ws[XLSX.utils.encode_cell({ r, c })];
+              let val = cell ? cell.v : null;
+
+              // Column H (index 7): header row -> rename; data rows -> slice chars 13-21
+              if (c === COL_H_INDEX) {
+                if (r === range.s.r) {
+                  val = 'Staff Trainer';
+                } else if (val !== null && val !== undefined) {
+                  val = String(val).slice(12, 21);
+                }
+              }
+
+              // Format column A (index 0) datetime
+              if (c === 0 && val instanceof Date) {
+                val = val.toLocaleString();
+              }
+
+              newRow.push(val);
+            }
+          }
+          newData.push(newRow);
+        }
+
+        const newWs = XLSX.utils.aoa_to_sheet(newData);
+
+        // Auto-fit column widths
+        const colWidths = [];
+        for (let c = 0; c < newData[0].length; c++) {
+          let maxLen = 10;
+          for (let r = 0; r < newData.length; r++) {
+            const val = newData[r][c];
+            if (val !== null && val !== undefined) {
+              const len = String(val).length;
+              if (len > maxLen) maxLen = len;
+            }
+          }
+          colWidths.push({ wch: Math.min(maxLen + 2, 60) });
+        }
+        newWs['!cols'] = colWidths;
+
+        XLSX.utils.book_append_sheet(newWb, newWs, sheetName);
+
+        const removedCount = Array.from(COLS_TO_REMOVE).filter(c => c <= range.e.c).length;
+        totalStats.origCols = numOrigCols;
+        totalStats.removed = removedCount;
+        totalStats.remaining = numOrigCols - removedCount;
+        totalStats.rows = numRows - 1;
+      });
+
+      return { wb: newWb, stats: totalStats };
+    }
+
+    function showStatus(filename, stats) {
+      document.getElementById('s-filename').textContent = filename;
+      document.getElementById('s-orig-cols').textContent = stats.origCols;
+      document.getElementById('s-removed').textContent = stats.removed;
+      document.getElementById('s-remaining').textContent = stats.remaining;
+      document.getElementById('s-rows').textContent = stats.rows + ' data rows';
+      document.getElementById('status-area').style.display = 'block';
+    }
+
+    function downloadFile() {
+      if (!outputWorkbook) return;
+      XLSX.writeFile(outputWorkbook, outputFilename);
+    }
+
+    function showError(msg) {
+      const el = document.getElementById('error-msg');
+      el.textContent = msg;
+      el.style.display = 'block';
+      document.getElementById('status-area').style.display = 'none';
+    }
+
+    function resetTool() {
+      outputWorkbook = null;
+      document.getElementById('status-area').style.display = 'none';
+      document.getElementById('error-msg').style.display = 'none';
+      document.getElementById('file-input').value = '';
+    }
+  </script>
+</body>
+</html>
