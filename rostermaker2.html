@@ -5,294 +5,533 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Excel Column Cleaner</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #f5f5f3;
-      color: #1a1a18;
-      min-height: 100vh;
-      display: flex;
-      align-items: flex-start;
-      justify-content: center;
-      padding: 3rem 1rem;
+      background: #f5f5f3; color: #1a1a18; min-height: 100vh;
+      display: flex; align-items: flex-start; justify-content: center; padding: 3rem 1rem;
     }
-
     .card {
-      background: #ffffff;
-      border-radius: 16px;
-      border: 0.5px solid rgba(0,0,0,0.12);
-      padding: 2rem;
-      width: 100%;
-      max-width: 620px;
+      background: #fff; border-radius: 16px; border: 0.5px solid rgba(0,0,0,0.12);
+      padding: 2rem; width: 100%; max-width: 620px;
     }
-
-    h1 { font-size: 20px; font-weight: 500; margin-bottom: 0.25rem; color: #1a1a18; }
-
+    h1 { font-size: 20px; font-weight: 500; margin-bottom: 0.25rem; }
     .subtitle { font-size: 14px; color: #666; margin-bottom: 1.5rem; line-height: 1.5; }
-
     #drop-zone {
-      border: 1.5px dashed #bbb;
-      border-radius: 12px;
-      padding: 2.5rem 1.5rem;
-      text-align: center;
-      cursor: pointer;
-      transition: background 0.15s, border-color 0.15s;
+      border: 1.5px dashed #bbb; border-radius: 12px; padding: 2.5rem 1.5rem;
+      text-align: center; cursor: pointer; transition: background 0.15s, border-color 0.15s;
     }
-
     #drop-zone:hover, #drop-zone.dragover { background: #f5f5f3; border-color: #888; }
-
     .drop-icon { font-size: 32px; margin-bottom: 0.5rem; line-height: 1; }
     .drop-title { font-size: 15px; font-weight: 500; margin-bottom: 4px; }
     .drop-hint { font-size: 13px; color: #888; }
 
     #status-area { display: none; margin-top: 1.25rem; }
-
     .status-box {
-      background: #f9f9f7;
-      border-radius: 10px;
-      border: 0.5px solid rgba(0,0,0,0.1);
-      padding: 1rem 1.25rem;
+      background: #f9f9f7; border-radius: 10px; border: 0.5px solid rgba(0,0,0,0.1);
+      padding: 1rem 1.25rem; margin-bottom: 1rem;
     }
-
     .status-row {
-      display: flex;
-      justify-content: space-between;
-      font-size: 13px;
-      padding: 4px 0;
-      border-bottom: 0.5px solid rgba(0,0,0,0.06);
-      color: #555;
+      display: flex; justify-content: space-between; font-size: 13px;
+      padding: 4px 0; border-bottom: 0.5px solid rgba(0,0,0,0.06); color: #555;
     }
-
     .status-row:last-child { border-bottom: none; }
     .status-row span:last-child { font-weight: 500; color: #1a1a18; }
 
+    #filter-area { display: none; margin-top: 1.25rem; }
+    .filter-label {
+      font-size: 13px; font-weight: 500; color: #1a1a18; margin-bottom: 0.6rem;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .filter-label a {
+      font-size: 12px; font-weight: 400; color: #888; cursor: pointer;
+      text-decoration: none;
+    }
+    .filter-label a:hover { color: #1a1a18; }
+    #filter-options {
+      border: 0.5px solid rgba(0,0,0,0.12); border-radius: 10px;
+      overflow: hidden; margin-bottom: 1rem;
+    }
+    .filter-option {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 14px; font-size: 13px; color: #1a1a18;
+      border-bottom: 0.5px solid rgba(0,0,0,0.06); cursor: pointer;
+      transition: background 0.1s; user-select: none;
+    }
+    .filter-option:last-child { border-bottom: none; }
+    .filter-option:hover { background: #f5f5f3; }
+    .filter-option input[type="checkbox"] {
+      width: 15px; height: 15px; cursor: pointer; flex-shrink: 0;
+      accent-color: #1a1a18;
+    }
+    .filter-option .count {
+      margin-left: auto; font-size: 12px; color: #aaa;
+    }
+    .no-options {
+      padding: 12px 14px; font-size: 13px; color: #aaa; font-style: italic;
+    }
+
     .download-btn {
-      display: block; width: 100%; margin-top: 1rem; padding: 10px;
+      display: block; width: 100%; padding: 10px;
       font-size: 14px; font-weight: 500; font-family: inherit;
       background: #1a1a18; color: #fff; border: none; border-radius: 10px;
       cursor: pointer; transition: background 0.12s;
     }
-
     .download-btn:hover { background: #333; }
-    .download-btn:active { transform: scale(0.99); }
-
+    .download-btn:disabled { background: #999; cursor: not-allowed; }
+    .download-btn:active:not(:disabled) { transform: scale(0.99); }
     .reset-btn {
       display: block; width: 100%; margin-top: 0.5rem; padding: 8px;
       font-size: 13px; font-family: inherit; background: transparent;
       color: #888; border: 0.5px solid rgba(0,0,0,0.15); border-radius: 10px;
       cursor: pointer; transition: background 0.12s;
     }
-
     .reset-btn:hover { background: #f0f0ee; }
-
     #error-msg {
       display: none; color: #a32d2d; font-size: 13px; margin-top: 0.75rem;
       padding: 10px 14px; background: #fcebeb; border-radius: 8px;
     }
+    .selected-note {
+      font-size: 12px; color: #888; margin-bottom: 0.75rem;
+    }
   </style>
 </head>
 <body>
-  <div class="card">
-    <h1>Excel Column Cleaner</h1>
-    <p class="subtitle">Upload an Excel or TSV file to clean and download.</p>
+<div class="card">
+  <h1>Excel Column Cleaner</h1>
+  <p class="subtitle">Upload an Excel or TSV file to clean and download.</p>
 
-    <div id="drop-zone"
-      onclick="document.getElementById('file-input').click()"
-      ondragover="event.preventDefault();this.classList.add('dragover')"
-      ondragleave="this.classList.remove('dragover')"
-      ondrop="handleDrop(event)">
-      <div class="drop-icon">📄</div>
-      <p class="drop-title">Drop your file here</p>
-      <p class="drop-hint">or click to browse — .xlsx, .xls, .tsv supported</p>
-      <input type="file" id="file-input" accept=".xlsx,.xls,.tsv" style="display:none" onchange="handleFile(this.files[0])">
-    </div>
+  <div id="drop-zone"
+    onclick="document.getElementById('file-input').click()"
+    ondragover="event.preventDefault();this.classList.add('dragover')"
+    ondragleave="this.classList.remove('dragover')"
+    ondrop="handleDrop(event)">
+    <div class="drop-icon">📄</div>
+    <p class="drop-title">Drop your file here</p>
+    <p class="drop-hint">or click to browse — .xlsx, .xls, .tsv supported</p>
+    <input type="file" id="file-input" accept=".xlsx,.xls,.tsv" style="display:none" onchange="handleFile(this.files[0])">
+  </div>
 
-    <div id="error-msg"></div>
+  <div id="error-msg"></div>
 
-    <div id="status-area">
-      <div class="status-box">
-        <div class="status-row"><span>File</span><span id="s-filename">—</span></div>
-        <div class="status-row"><span>Original columns</span><span id="s-orig-cols">—</span></div>
-        <div class="status-row"><span>Columns removed</span><span id="s-removed">—</span></div>
-        <div class="status-row"><span>Remaining columns</span><span id="s-remaining">—</span></div>
-        <div class="status-row"><span>Rows</span><span id="s-rows">—</span></div>
-      </div>
-      <button class="download-btn" onclick="downloadFile()">Download cleaned file (.xlsx)</button>
-      <button class="reset-btn" onclick="resetTool()">Upload another file</button>
+  <div id="status-area">
+    <div class="status-box">
+      <div class="status-row"><span>File</span><span id="s-filename">—</span></div>
+      <div class="status-row"><span>Original columns</span><span id="s-orig-cols">—</span></div>
+      <div class="status-row"><span>Columns removed</span><span id="s-removed">—</span></div>
+      <div class="status-row"><span>Remaining columns</span><span id="s-remaining">—</span></div>
+      <div class="status-row"><span>Rows</span><span id="s-rows">—</span></div>
     </div>
   </div>
 
-  <script>
-    let outputWorkbook = null;
-    let outputFilename = 'cleaned.xlsx';
+  <div id="filter-area">
+    <div class="filter-label">
+      <span>Filter by Custom Fields</span>
+      <span>
+        <a onclick="selectAll()">Select all</a>
+        &nbsp;·&nbsp;
+        <a onclick="selectNone()">Clear</a>
+      </span>
+    </div>
+    <div id="filter-options"></div>
+    <p class="selected-note" id="selected-note"></p>
+    <button class="download-btn" id="download-btn" onclick="downloadFile()" disabled>Download cleaned file (.xlsx)</button>
+    <button class="reset-btn" onclick="resetTool()">Upload another file</button>
+  </div>
+</div>
 
-    // Columns to remove (0-indexed): E=4, F=5, G=6, J=9, K=10, L=11, M=12, N=13, O=14, P=15, Q=16, S=18, T=19, U=20
-    // Keep R=17
-    const COLS_TO_REMOVE = new Set([4, 5, 6, 9, 10, 11, 12, 13, 14, 15, 16, 18, 19, 20]);
-    const COL_H_INDEX = 7;
+<script>
+  // Raw cleaned data (all rows, with header at index 0)
+  // Column R (index 17 in original) — after removal of cols, we track its new index
+  let cleanedData = [];       // full dataset after column cleaning, still includes the custom-fields col
+  let customFieldColIndex = -1; // index in cleanedData rows of the custom-fields slice col
+  let outputFilename = 'cleaned.xlsx';
 
-    function handleDrop(e) {
-      e.preventDefault();
-      document.getElementById('drop-zone').classList.remove('dragover');
-      const file = e.dataTransfer.files[0];
-      if (file) handleFile(file);
+  const COLS_TO_REMOVE = new Set([4, 5, 6, 9, 10, 11, 12, 13, 14, 15, 16, 18, 19, 20]);
+  const COL_H_INDEX = 7;   // original col H — renamed Staff Trainer, kept for now, removed at download
+  const COL_R_INDEX = 17;  // original col R — Custom Fields
+
+  function handleDrop(e) {
+    e.preventDefault();
+    document.getElementById('drop-zone').classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file) handleFile(file);
+  }
+
+  function handleFile(file) {
+    if (!file) return;
+    const isTsv = file.name.toLowerCase().endsWith('.tsv');
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        let wb;
+        if (isTsv) {
+          const text = new TextDecoder('utf-8').decode(new Uint8Array(e.target.result));
+          wb = XLSX.read(text, { type: 'string', FS: '\t', cellDates: true });
+        } else {
+          wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array', cellDates: true });
+        }
+        const result = processWorkbook(wb);
+        cleanedData = result.data;
+        customFieldColIndex = result.customFieldColIndex;
+        outputFilename = file.name.replace(/\.[^.]+$/, '') + '_cleaned.xlsx';
+        showStatus(file.name, result.stats);
+        buildFilterUI();
+        document.getElementById('error-msg').style.display = 'none';
+      } catch(err) {
+        showError('Could not read file. Make sure it\'s a valid Excel or TSV file.');
+        console.error(err);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  function processWorkbook(wb) {
+    let allData = [];
+    let totalStats = { origCols: 0, removed: 0, remaining: 0, rows: 0 };
+    let cfColIdx = -1;
+
+    wb.SheetNames.forEach(function(sheetName) {
+      const ws = wb.Sheets[sheetName];
+      if (!ws['!ref']) return;
+      const range = XLSX.utils.decode_range(ws['!ref']);
+      const numOrigCols = range.e.c + 1;
+      const numRows = range.e.r + 1;
+      const newData = [];
+      let newColIndex = 0;
+      let cfNewIdx = -1;
+
+      // First pass: figure out what new index col R lands at
+      let tempIdx = 0;
+      for (let c = range.s.c; c <= range.e.c; c++) {
+        if (!COLS_TO_REMOVE.has(c)) {
+          if (c === COL_R_INDEX) cfNewIdx = tempIdx;
+          tempIdx++;
+        }
+      }
+      cfColIdx = cfNewIdx;
+
+      for (let r = range.s.r; r <= range.e.r; r++) {
+        const newRow = [];
+        for (let c = range.s.c; c <= range.e.c; c++) {
+          if (!COLS_TO_REMOVE.has(c)) {
+            const cell = ws[XLSX.utils.encode_cell({ r, c })];
+            let val = cell ? cell.v : null;
+
+            // Col H: rename header, slice data
+            if (c === COL_H_INDEX) {
+              if (r === range.s.r) {
+                val = 'Staff Trainer';
+              } else if (val !== null && val !== undefined) {
+                val = String(val).slice(12, 33);
+              }
+            }
+
+            // Col R: rename header to "Custom Fields", slice chars 52-68 for data rows
+            if (c === COL_R_INDEX) {
+              if (r === range.s.r) {
+                val = 'Custom Fields';
+              } else if (val !== null && val !== undefined) {
+                val = String(val).slice(51, 68).trim();
+              }
+            }
+
+            if (c === 0 && val instanceof Date) {
+              val = val.toLocaleString();
+            }
+
+            newRow.push(val);
+          }
+        }
+        newData.push(newRow);
+      }
+
+      allData = newData;
+      const removedCount = Array.from(COLS_TO_REMOVE).filter(c => c <= range.e.c).length;
+      totalStats.origCols = numOrigCols;
+      totalStats.removed = removedCount;
+      totalStats.remaining = numOrigCols - removedCount;
+      totalStats.rows = numRows - 1;
+    });
+
+    return { data: allData, stats: totalStats, customFieldColIndex: cfColIdx };
+  }
+
+  function buildFilterUI() {
+    const container = document.getElementById('filter-options');
+    container.innerHTML = '';
+
+    if (customFieldColIndex === -1 || cleanedData.length <= 1) {
+      container.innerHTML = '<div class="no-options">No Custom Fields column found.</div>';
+      document.getElementById('filter-area').style.display = 'block';
+      return;
     }
 
-    function handleFile(file) {
-      if (!file) return;
-      const isTsv = file.name.toLowerCase().endsWith('.tsv');
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        try {
-          let wb;
-          if (isTsv) {
-            const text = new TextDecoder('utf-8').decode(new Uint8Array(e.target.result));
-            wb = XLSX.read(text, { type: 'string', FS: '\t', cellDates: true });
-          } else {
-            wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array', cellDates: true });
-          }
-          const result = processWorkbook(wb);
-          outputWorkbook = result.wb;
-          outputFilename = file.name.replace(/\.[^.]+$/, '') + '_cleaned.xlsx';
-          showStatus(file.name, result.stats);
-          document.getElementById('error-msg').style.display = 'none';
-        } catch(err) {
-          showError('Could not read file. Make sure it\'s a valid Excel or TSV file.');
-        }
-      };
-      reader.readAsArrayBuffer(file);
+    // Count unique values (skip header row)
+    const counts = {};
+    for (let r = 1; r < cleanedData.length; r++) {
+      const val = cleanedData[r][customFieldColIndex];
+      const key = (val !== null && val !== undefined && String(val).trim() !== '')
+        ? String(val).trim() : '(blank)';
+      counts[key] = (counts[key] || 0) + 1;
     }
 
-    function processWorkbook(wb) {
-      const newWb = XLSX.utils.book_new();
-      let totalStats = { origCols: 0, removed: 0, remaining: 0, rows: 0 };
+    const options = Object.keys(counts).sort();
 
-      wb.SheetNames.forEach(function(sheetName) {
-        const ws = wb.Sheets[sheetName];
-        if (!ws['!ref']) {
-          XLSX.utils.book_append_sheet(newWb, ws, sheetName);
-          return;
-        }
-
-        const range = XLSX.utils.decode_range(ws['!ref']);
-        const numOrigCols = range.e.c + 1;
-        const numRows = range.e.r + 1;
-
-        // Build cleaned data array
-        const newData = [];
-        for (let r = range.s.r; r <= range.e.r; r++) {
-          const newRow = [];
-          for (let c = range.s.c; c <= range.e.c; c++) {
-            if (!COLS_TO_REMOVE.has(c)) {
-              const cell = ws[XLSX.utils.encode_cell({ r, c })];
-              let val = cell ? cell.v : null;
-
-              if (c === COL_H_INDEX) {
-                if (r === range.s.r) {
-                  val = 'Staff Trainer';
-                } else if (val !== null && val !== undefined) {
-                  val = String(val).slice(12, 33);
-                }
-              }
-
-              if (c === 0 && val instanceof Date) {
-                val = val.toLocaleString();
-              }
-
-              newRow.push(val);
-            }
-          }
-          newData.push(newRow);
-        }
-
-        const newWs = XLSX.utils.aoa_to_sheet(newData);
-        const numNewCols = newData[0] ? newData[0].length : 0;
-        const numNewRows = newData.length;
-
-        // Auto-fit column widths
-        const colWidths = [];
-        for (let c = 0; c < numNewCols; c++) {
-          let maxLen = 10;
-          for (let r = 0; r < newData.length; r++) {
-            const val = newData[r][c];
-            if (val !== null && val !== undefined) {
-              const len = String(val).length;
-              if (len > maxLen) maxLen = len;
-            }
-          }
-          colWidths.push({ wch: Math.min(maxLen + 2, 60) });
-        }
-        newWs['!cols'] = colWidths;
-
-        // Register as an Excel Table with a grey banded style
-        const tableRef = XLSX.utils.encode_range({
-          s: { r: 0, c: 0 },
-          e: { r: numNewRows - 1, c: numNewCols - 1 }
-        });
-
-        // Build column definitions from header row
-        const tableCols = (newData[0] || []).map(function(h, i) {
-          return { name: h !== null && h !== undefined ? String(h) : ('Column' + (i + 1)) };
-        });
-
-        // Attach the table definition to the worksheet
-        // TableStyleMedium15 is a grey banded built-in Excel style
-        newWs['!tables'] = [{
-          name: 'CleanedData',
-          ref: tableRef,
-          headerRow: true,
-          totalsRow: false,
-          style: {
-            name: 'TableStyleMedium15',
-            showFirstColumn: false,
-            showLastColumn: false,
-            showRowStripes: true,
-            showColumnStripes: false
-          },
-          columns: tableCols
-        }];
-
-        XLSX.utils.book_append_sheet(newWb, newWs, sheetName);
-
-        const removedCount = Array.from(COLS_TO_REMOVE).filter(c => c <= range.e.c).length;
-        totalStats.origCols = numOrigCols;
-        totalStats.removed = removedCount;
-        totalStats.remaining = numOrigCols - removedCount;
-        totalStats.rows = numNewRows - 1;
+    if (options.length === 0) {
+      container.innerHTML = '<div class="no-options">No values found in Custom Fields.</div>';
+    } else {
+      options.forEach(function(opt) {
+        const div = document.createElement('div');
+        div.className = 'filter-option';
+        div.innerHTML =
+          '<input type="checkbox" id="opt_' + encodeURIComponent(opt) + '" value="' + escapeHtml(opt) + '" onchange="updateDownloadBtn()">'
+          + '<label for="opt_' + encodeURIComponent(opt) + '" style="flex:1;cursor:pointer;">' + escapeHtml(opt) + '</label>'
+          + '<span class="count">' + counts[opt] + '</span>';
+        container.appendChild(div);
       });
-
-      return { wb: newWb, stats: totalStats };
     }
 
-    function showStatus(filename, stats) {
-      document.getElementById('s-filename').textContent = filename;
-      document.getElementById('s-orig-cols').textContent = stats.origCols;
-      document.getElementById('s-removed').textContent = stats.removed;
-      document.getElementById('s-remaining').textContent = stats.remaining;
-      document.getElementById('s-rows').textContent = stats.rows + ' data rows';
-      document.getElementById('status-area').style.display = 'block';
+    document.getElementById('filter-area').style.display = 'block';
+    updateDownloadBtn();
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function getSelectedOptions() {
+    const checkboxes = document.querySelectorAll('#filter-options input[type="checkbox"]:checked');
+    return Array.from(checkboxes).map(cb => cb.value);
+  }
+
+  function updateDownloadBtn() {
+    const selected = getSelectedOptions();
+    const btn = document.getElementById('download-btn');
+    const note = document.getElementById('selected-note');
+    if (selected.length === 0) {
+      btn.disabled = true;
+      note.textContent = 'Select at least one option to download.';
+    } else {
+      btn.disabled = false;
+      // Count how many rows match
+      const matching = cleanedData.slice(1).filter(row => {
+        const val = (row[customFieldColIndex] !== null && row[customFieldColIndex] !== undefined)
+          ? String(row[customFieldColIndex]).trim() : '(blank)';
+        return selected.includes(val);
+      }).length;
+      note.textContent = selected.length + ' option' + (selected.length > 1 ? 's' : '') + ' selected — ' + matching + ' matching row' + (matching !== 1 ? 's' : '');
+    }
+  }
+
+  function selectAll() {
+    document.querySelectorAll('#filter-options input[type="checkbox"]').forEach(cb => cb.checked = true);
+    updateDownloadBtn();
+  }
+
+  function selectNone() {
+    document.querySelectorAll('#filter-options input[type="checkbox"]').forEach(cb => cb.checked = false);
+    updateDownloadBtn();
+  }
+
+  // ---- xlsx building ----
+
+  function colLetter(n) {
+    let s = ''; n++;
+    while (n > 0) { n--; s = String.fromCharCode(65 + (n % 26)) + s; n = Math.floor(n / 26); }
+    return s;
+  }
+
+  function escapeXml(v) {
+    if (v === null || v === undefined) return '';
+    return String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');
+  }
+
+  function sanitizeHeaders(headerRow) {
+    const seen = {};
+    return headerRow.map(function(h, i) {
+      let name = (h !== null && h !== undefined && String(h).trim() !== '') ? String(h).trim() : ('Column' + (i+1));
+      name = name.replace(/[\[\]']/g, '');
+      if (name === '') name = 'Column' + (i+1);
+      const base = name; let counter = 2;
+      while (seen[name.toLowerCase()]) { name = base + '_' + counter; counter++; }
+      seen[name.toLowerCase()] = true;
+      return name;
+    });
+  }
+
+  function buildXlsx(data) {
+    if (!data || data.length === 0) { showError('No data found.'); return; }
+    const numRows = data.length;
+    const numCols = data[0].length;
+    const lastCol = colLetter(numCols - 1);
+    const tableRef = 'A1:' + lastCol + numRows;
+    const headers = sanitizeHeaders(data[0]);
+
+    let sheetDataRows = '';
+    for (let r = 0; r < numRows; r++) {
+      const excelRow = r + 1;
+      let cells = '';
+      for (let c = 0; c < numCols; c++) {
+        const cellRef = colLetter(c) + excelRow;
+        const val = (r === 0) ? headers[c] : data[r][c];
+        if (val === null || val === undefined || val === '') continue;
+        const isNum = (r > 0) && (typeof val === 'number');
+        if (isNum) {
+          cells += '<c r="' + cellRef + '"><v>' + val + '</v></c>';
+        } else {
+          cells += '<c r="' + cellRef + '" t="inlineStr"><is><t>' + escapeXml(val) + '</t></is></c>';
+        }
+      }
+      sheetDataRows += '<row r="' + excelRow + '">' + cells + '</row>';
     }
 
-    function downloadFile() {
-      if (!outputWorkbook) return;
-      XLSX.writeFile(outputWorkbook, outputFilename);
+    let colDefs = '<cols>';
+    for (let c = 0; c < numCols; c++) {
+      let maxLen = 8;
+      for (let r = 0; r < numRows; r++) {
+        const v = (r === 0) ? headers[c] : data[r][c];
+        if (v !== null && v !== undefined) { const l = String(v).length; if (l > maxLen) maxLen = l; }
+      }
+      colDefs += '<col min="' + (c+1) + '" max="' + (c+1) + '" width="' + Math.min(maxLen+2,60) + '" bestFit="1" customWidth="1"/>';
+    }
+    colDefs += '</cols>';
+
+    const sheetXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+      + '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"'
+      + ' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+      + colDefs + '<sheetData>' + sheetDataRows + '</sheetData>'
+      + '<tableParts count="1"><tablePart r:id="rId1"/></tableParts></worksheet>';
+
+    let tableCols = '';
+    for (let c = 0; c < numCols; c++) {
+      tableCols += '<tableColumn id="' + (c+1) + '" name="' + escapeXml(headers[c]) + '"/>';
     }
 
-    function showError(msg) {
-      const el = document.getElementById('error-msg');
-      el.textContent = msg;
-      el.style.display = 'block';
-      document.getElementById('status-area').style.display = 'none';
+    const tableXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+      + '<table xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"'
+      + ' id="1" name="CleanedData" displayName="CleanedData" ref="' + tableRef + '" headerRowCount="1">'
+      + '<autoFilter ref="' + tableRef + '"/>'
+      + '<tableColumns count="' + numCols + '">' + tableCols + '</tableColumns>'
+      + '<tableStyleInfo name="TableStyleMedium15" showFirstColumn="0" showLastColumn="0" showRowStripes="1" showColumnStripes="0"/>'
+      + '</table>';
+
+    const sheetRelsXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+      + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+      + '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/table" Target="../tables/table1.xml"/>'
+      + '</Relationships>';
+
+    const workbookXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+      + '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"'
+      + ' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+      + '<sheets><sheet name="Sheet1" sheetId="1" r:id="rId1"/></sheets></workbook>';
+
+    const workbookRelsXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+      + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+      + '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>'
+      + '</Relationships>';
+
+    const contentTypesXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+      + '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+      + '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+      + '<Default Extension="xml" ContentType="application/xml"/>'
+      + '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
+      + '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
+      + '<Override PartName="/xl/tables/table1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.table+xml"/>'
+      + '</Types>';
+
+    const relsXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+      + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+      + '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>'
+      + '</Relationships>';
+
+    const zip = new JSZip();
+    zip.file('[Content_Types].xml', contentTypesXml);
+    zip.file('_rels/.rels', relsXml);
+    zip.file('xl/workbook.xml', workbookXml);
+    zip.file('xl/_rels/workbook.xml.rels', workbookRelsXml);
+    zip.file('xl/worksheets/sheet1.xml', sheetXml);
+    zip.file('xl/worksheets/_rels/sheet1.xml.rels', sheetRelsXml);
+    zip.file('xl/tables/table1.xml', tableXml);
+
+    zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+      .then(function(blob) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = outputFilename; a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      });
+  }
+
+  function downloadFile() {
+    const selected = new Set(getSelectedOptions());
+    if (selected.size === 0) return;
+
+    // Filter rows by selected custom field values, then drop the Custom Fields col and Staff Trainer col
+    const headerRow = cleanedData[0];
+
+    // Find the Staff Trainer column index in cleanedData (original col H after removal mapping)
+    // and the Custom Fields column index
+    const staffTrainerHeader = 'Staff Trainer';
+    const customFieldsHeader = 'Custom Fields';
+    const staffTrainerIdx = headerRow.indexOf(staffTrainerHeader);
+    // customFieldColIndex is already known globally
+
+    // Columns to drop from final output: Staff Trainer + Custom Fields
+    const dropCols = new Set();
+    if (staffTrainerIdx !== -1) dropCols.add(staffTrainerIdx);
+    if (customFieldColIndex !== -1) dropCols.add(customFieldColIndex);
+
+    // Build filtered + trimmed data
+    const finalData = [];
+
+    // Header row — drop unwanted cols
+    finalData.push(headerRow.filter((_, i) => !dropCols.has(i)));
+
+    // Data rows — filter by selection, then drop cols
+    for (let r = 1; r < cleanedData.length; r++) {
+      const row = cleanedData[r];
+      const cfVal = (row[customFieldColIndex] !== null && row[customFieldColIndex] !== undefined)
+        ? String(row[customFieldColIndex]).trim() : '(blank)';
+      if (selected.has(cfVal)) {
+        finalData.push(row.filter((_, i) => !dropCols.has(i)));
+      }
     }
 
-    function resetTool() {
-      outputWorkbook = null;
-      document.getElementById('status-area').style.display = 'none';
-      document.getElementById('error-msg').style.display = 'none';
-      document.getElementById('file-input').value = '';
+    if (finalData.length <= 1) {
+      showError('No rows matched the selected filters.');
+      return;
     }
-  </script>
+
+    buildXlsx(finalData);
+  }
+
+  function showStatus(filename, stats) {
+    document.getElementById('s-filename').textContent = filename;
+    document.getElementById('s-orig-cols').textContent = stats.origCols;
+    document.getElementById('s-removed').textContent = stats.removed;
+    document.getElementById('s-remaining').textContent = stats.remaining;
+    document.getElementById('s-rows').textContent = stats.rows + ' data rows';
+    document.getElementById('status-area').style.display = 'block';
+  }
+
+  function showError(msg) {
+    const el = document.getElementById('error-msg');
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+
+  function resetTool() {
+    cleanedData = [];
+    customFieldColIndex = -1;
+    document.getElementById('status-area').style.display = 'none';
+    document.getElementById('filter-area').style.display = 'none';
+    document.getElementById('error-msg').style.display = 'none';
+    document.getElementById('file-input').value = '';
+    document.getElementById('filter-options').innerHTML = '';
+  }
+</script>
 </body>
 </html>
