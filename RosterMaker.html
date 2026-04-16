@@ -27,10 +27,11 @@
     .drop-icon { font-size: 32px; margin-bottom: 0.5rem; line-height: 1; }
     .drop-title { font-size: 15px; font-weight: 500; margin-bottom: 4px; }
     .drop-hint { font-size: 13px; color: #888; }
+
     #status-area { display: none; margin-top: 1.25rem; }
     .status-box {
       background: #f9f9f7; border-radius: 10px; border: 0.5px solid rgba(0,0,0,0.1);
-      padding: 1rem 1.25rem;
+      padding: 1rem 1.25rem; margin-bottom: 1rem;
     }
     .status-row {
       display: flex; justify-content: space-between; font-size: 13px;
@@ -38,14 +39,45 @@
     }
     .status-row:last-child { border-bottom: none; }
     .status-row span:last-child { font-weight: 500; color: #1a1a18; }
+
+    #filter-area { display: none; margin-top: 1.25rem; }
+    .filter-label {
+      font-size: 13px; font-weight: 500; color: #1a1a18; margin-bottom: 0.6rem;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .filter-label a {
+      font-size: 12px; font-weight: 400; color: #888; cursor: pointer; text-decoration: none;
+    }
+    .filter-label a:hover { color: #1a1a18; }
+    #filter-options {
+      border: 0.5px solid rgba(0,0,0,0.12); border-radius: 10px;
+      overflow: hidden; margin-bottom: 1rem;
+    }
+    .filter-option {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 14px; font-size: 13px; color: #1a1a18;
+      border-bottom: 0.5px solid rgba(0,0,0,0.06); cursor: pointer;
+      transition: background 0.1s; user-select: none;
+    }
+    .filter-option:last-child { border-bottom: none; }
+    .filter-option:hover { background: #f5f5f3; }
+    .filter-option input[type="checkbox"] {
+      width: 15px; height: 15px; cursor: pointer; flex-shrink: 0; accent-color: #1a1a18;
+    }
+    .filter-option .count {
+      margin-left: auto; font-size: 12px; color: #aaa; white-space: nowrap;
+    }
+    .no-options { padding: 12px 14px; font-size: 13px; color: #aaa; font-style: italic; }
+
     .download-btn {
-      display: block; width: 100%; margin-top: 1rem; padding: 10px;
+      display: block; width: 100%; padding: 10px;
       font-size: 14px; font-weight: 500; font-family: inherit;
       background: #1a1a18; color: #fff; border: none; border-radius: 10px;
       cursor: pointer; transition: background 0.12s;
     }
     .download-btn:hover { background: #333; }
-    .download-btn:active { transform: scale(0.99); }
+    .download-btn:disabled { background: #999; cursor: not-allowed; }
+    .download-btn:active:not(:disabled) { transform: scale(0.99); }
     .reset-btn {
       display: block; width: 100%; margin-top: 0.5rem; padding: 8px;
       font-size: 13px; font-family: inherit; background: transparent;
@@ -57,12 +89,14 @@
       display: none; color: #a32d2d; font-size: 13px; margin-top: 0.75rem;
       padding: 10px 14px; background: #fcebeb; border-radius: 8px;
     }
+    .selected-note { font-size: 12px; color: #888; margin-bottom: 0.75rem; }
   </style>
 </head>
 <body>
 <div class="card">
   <h1>Excel Column Cleaner</h1>
   <p class="subtitle">Upload an Excel or TSV file to clean and download.</p>
+
   <div id="drop-zone"
     onclick="document.getElementById('file-input').click()"
     ondragover="event.preventDefault();this.classList.add('dragover')"
@@ -73,7 +107,9 @@
     <p class="drop-hint">or click to browse — .xlsx, .xls, .tsv supported</p>
     <input type="file" id="file-input" accept=".xlsx,.xls,.tsv" style="display:none" onchange="handleFile(this.files[0])">
   </div>
+
   <div id="error-msg"></div>
+
   <div id="status-area">
     <div class="status-box">
       <div class="status-row"><span>File</span><span id="s-filename">—</span></div>
@@ -82,17 +118,49 @@
       <div class="status-row"><span>Remaining columns</span><span id="s-remaining">—</span></div>
       <div class="status-row"><span>Rows</span><span id="s-rows">—</span></div>
     </div>
-    <button class="download-btn" onclick="downloadFile()">Download cleaned file (.xlsx)</button>
+  </div>
+
+  <div id="filter-area">
+    <div class="filter-label">
+      <span>Filter by Custom Fields</span>
+      <span>
+        <a onclick="selectAll()">Select all</a>
+        &nbsp;·&nbsp;
+        <a onclick="selectNone()">Clear</a>
+      </span>
+    </div>
+    <div id="filter-options"></div>
+    <p class="selected-note" id="selected-note"></p>
+    <button class="download-btn" id="download-btn" onclick="downloadFile()" disabled>Download cleaned file (.xlsx)</button>
     <button class="reset-btn" onclick="resetTool()">Upload another file</button>
   </div>
 </div>
 
 <script>
-  let outputBlob = null;
+  let cleanedData = [];
+  let customFieldColIndex = -1;
   let outputFilename = 'cleaned.xlsx';
 
   const COLS_TO_REMOVE = new Set([4, 5, 6, 9, 10, 11, 12, 13, 14, 15, 16, 18, 19, 20]);
   const COL_H_INDEX = 7;
+  const COL_R_INDEX = 17;
+
+  // Extract text between the 3rd and 4th double-quote characters in a string
+  function extractBetween3rdAnd4thQuote(str) {
+    if (!str) return '';
+    const s = String(str);
+    let count = 0;
+    let start = -1;
+    for (let i = 0; i < s.length; i++) {
+      if (s[i] === '"') {
+        count++;
+        if (count === 3) start = i + 1;
+        if (count === 4) return s.slice(start, i).trim();
+      }
+    }
+    // If fewer than 4 quotes found, return empty
+    return '';
+  }
 
   function handleDrop(e) {
     e.preventDefault();
@@ -115,8 +183,11 @@
           wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array', cellDates: true });
         }
         const result = processWorkbook(wb);
+        cleanedData = result.data;
+        customFieldColIndex = result.customFieldColIndex;
         outputFilename = file.name.replace(/\.[^.]+$/, '') + '_cleaned.xlsx';
-        buildXlsx(result.data, result.stats, file.name);
+        showStatus(file.name, result.stats);
+        buildFilterUI();
         document.getElementById('error-msg').style.display = 'none';
       } catch(err) {
         showError('Could not read file. Make sure it\'s a valid Excel or TSV file.');
@@ -129,6 +200,7 @@
   function processWorkbook(wb) {
     let allData = [];
     let totalStats = { origCols: 0, removed: 0, remaining: 0, rows: 0 };
+    let cfColIdx = -1;
 
     wb.SheetNames.forEach(function(sheetName) {
       const ws = wb.Sheets[sheetName];
@@ -138,12 +210,23 @@
       const numRows = range.e.r + 1;
       const newData = [];
 
+      // Find new index of col R after removals
+      let tempIdx = 0, cfNewIdx = -1;
+      for (let c = range.s.c; c <= range.e.c; c++) {
+        if (!COLS_TO_REMOVE.has(c)) {
+          if (c === COL_R_INDEX) cfNewIdx = tempIdx;
+          tempIdx++;
+        }
+      }
+      cfColIdx = cfNewIdx;
+
       for (let r = range.s.r; r <= range.e.r; r++) {
         const newRow = [];
         for (let c = range.s.c; c <= range.e.c; c++) {
           if (!COLS_TO_REMOVE.has(c)) {
             const cell = ws[XLSX.utils.encode_cell({ r, c })];
             let val = cell ? cell.v : null;
+
             if (c === COL_H_INDEX) {
               if (r === range.s.r) {
                 val = 'Staff Trainer';
@@ -151,9 +234,20 @@
                 val = String(val).slice(12, 33);
               }
             }
+
+            if (c === COL_R_INDEX) {
+              if (r === range.s.r) {
+                val = 'Custom Fields';
+              } else if (val !== null && val !== undefined) {
+                // Extract between 3rd and 4th double-quote
+                val = extractBetween3rdAnd4thQuote(String(val));
+              }
+            }
+
             if (c === 0 && val instanceof Date) {
               val = val.toLocaleString();
             }
+
             newRow.push(val);
           }
         }
@@ -168,144 +262,204 @@
       totalStats.rows = numRows - 1;
     });
 
-    return { data: allData, stats: totalStats };
+    return { data: allData, stats: totalStats, customFieldColIndex: cfColIdx };
   }
 
-  function colLetter(n) {
-    let s = '';
-    n++;
-    while (n > 0) {
-      n--;
-      s = String.fromCharCode(65 + (n % 26)) + s;
-      n = Math.floor(n / 26);
+  function buildFilterUI() {
+    const container = document.getElementById('filter-options');
+    container.innerHTML = '';
+
+    if (customFieldColIndex === -1 || cleanedData.length <= 1) {
+      container.innerHTML = '<div class="no-options">No Custom Fields column found.</div>';
+      document.getElementById('filter-area').style.display = 'block';
+      return;
     }
+
+    const counts = {};
+    for (let r = 1; r < cleanedData.length; r++) {
+      const val = cleanedData[r][customFieldColIndex];
+      const key = (val !== null && val !== undefined && String(val).trim() !== '')
+        ? String(val).trim() : '(blank)';
+      counts[key] = (counts[key] || 0) + 1;
+    }
+
+    const options = Object.keys(counts).sort();
+
+    if (options.length === 0) {
+      container.innerHTML = '<div class="no-options">No values found in Custom Fields.</div>';
+    } else {
+      options.forEach(function(opt) {
+        const n = counts[opt];
+        const label = n + ' entr' + (n === 1 ? 'y' : 'ies');
+        const div = document.createElement('div');
+        div.className = 'filter-option';
+        div.innerHTML =
+          '<input type="checkbox" id="opt_' + encodeURIComponent(opt) + '" value="' + escapeHtml(opt) + '" onchange="updateDownloadBtn()">'
+          + '<label for="opt_' + encodeURIComponent(opt) + '" style="flex:1;cursor:pointer;">' + escapeHtml(opt) + '</label>'
+          + '<span class="count">' + label + '</span>';
+        container.appendChild(div);
+      });
+    }
+
+    document.getElementById('filter-area').style.display = 'block';
+    updateDownloadBtn();
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function getSelectedOptions() {
+    return Array.from(document.querySelectorAll('#filter-options input[type="checkbox"]:checked')).map(cb => cb.value);
+  }
+
+  function updateDownloadBtn() {
+    const selected = getSelectedOptions();
+    const btn = document.getElementById('download-btn');
+    const note = document.getElementById('selected-note');
+    if (selected.size === 0 || selected.length === 0) {
+      btn.disabled = true;
+      note.textContent = 'Select at least one option to download.';
+    } else {
+      btn.disabled = false;
+      const selSet = new Set(selected);
+      const matching = cleanedData.slice(1).filter(row => {
+        const val = (row[customFieldColIndex] !== null && row[customFieldColIndex] !== undefined)
+          ? String(row[customFieldColIndex]).trim() : '(blank)';
+        return selSet.has(val);
+      }).length;
+      note.textContent = selected.length + ' option' + (selected.length > 1 ? 's' : '') + ' selected — ' + matching + ' matching row' + (matching !== 1 ? 's' : '');
+    }
+  }
+
+  function selectAll() {
+    document.querySelectorAll('#filter-options input[type="checkbox"]').forEach(cb => cb.checked = true);
+    updateDownloadBtn();
+  }
+
+  function selectNone() {
+    document.querySelectorAll('#filter-options input[type="checkbox"]').forEach(cb => cb.checked = false);
+    updateDownloadBtn();
+  }
+
+  // ---- xlsx building ----
+
+  function colLetter(n) {
+    let s = ''; n++;
+    while (n > 0) { n--; s = String.fromCharCode(65 + (n % 26)) + s; n = Math.floor(n / 26); }
     return s;
   }
 
   function escapeXml(v) {
     if (v === null || v === undefined) return '';
-    return String(v)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&apos;');
+    return String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');
   }
 
-  // Ensure all header names are non-empty, unique, and safe for Excel table columns
   function sanitizeHeaders(headerRow) {
     const seen = {};
     return headerRow.map(function(h, i) {
-      // Fallback for blank/null headers
-      let name = (h !== null && h !== undefined && String(h).trim() !== '')
-        ? String(h).trim()
-        : ('Column' + (i + 1));
-
-      // Strip any characters Excel doesn't allow in table column names
-      // (single quotes at start are disallowed; brackets are disallowed)
+      let name = (h !== null && h !== undefined && String(h).trim() !== '') ? String(h).trim() : ('Column' + (i+1));
       name = name.replace(/[\[\]']/g, '');
-      if (name === '') name = 'Column' + (i + 1);
-
-      // Deduplicate: if name already used, append _2, _3, etc.
-      const base = name;
-      let counter = 2;
-      while (seen[name.toLowerCase()]) {
-        name = base + '_' + counter;
-        counter++;
-      }
+      if (name === '') name = 'Column' + (i+1);
+      const base = name; let counter = 2;
+      while (seen[name.toLowerCase()]) { name = base + '_' + counter; counter++; }
       seen[name.toLowerCase()] = true;
       return name;
     });
   }
 
-  function buildXlsx(data, stats, origName) {
+  function buildXlsx(data) {
     if (!data || data.length === 0) { showError('No data found.'); return; }
-
     const numRows = data.length;
     const numCols = data[0].length;
     const lastCol = colLetter(numCols - 1);
     const tableRef = 'A1:' + lastCol + numRows;
-
-    // Sanitize headers before writing
     const headers = sanitizeHeaders(data[0]);
 
-    // ---- sheet XML ----
+    // Styles XML — medium blue header fill (4472C4), white bold text
+    const stylesXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+      + '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+      + '<fonts count="2">'
+      + '<font><sz val="11"/><name val="Calibri"/></font>'
+      + '<font><sz val="11"/><b/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>'
+      + '</fonts>'
+      + '<fills count="3">'
+      + '<fill><patternFill patternType="none"/></fill>'
+      + '<fill><patternFill patternType="gray125"/></fill>'
+      + '<fill><patternFill patternType="solid"><fgColor rgb="FF4472C4"/></patternFill></fill>'
+      + '</fills>'
+      + '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>'
+      + '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
+      + '<cellXfs count="2">'
+      + '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'
+      + '<xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/>'
+      + '</cellXfs>'
+      + '</styleSheet>';
+
     let sheetDataRows = '';
     for (let r = 0; r < numRows; r++) {
       const excelRow = r + 1;
       let cells = '';
       for (let c = 0; c < numCols; c++) {
         const cellRef = colLetter(c) + excelRow;
-        // For header row use sanitized names
         const val = (r === 0) ? headers[c] : data[r][c];
         if (val === null || val === undefined || val === '') continue;
         const isNum = (r > 0) && (typeof val === 'number');
+        // Apply style index 1 (blue header) to row 1
+        const styleAttr = (r === 0) ? ' s="1"' : '';
         if (isNum) {
-          cells += '<c r="' + cellRef + '"><v>' + val + '</v></c>';
+          cells += '<c r="' + cellRef + '"' + styleAttr + '><v>' + val + '</v></c>';
         } else {
-          cells += '<c r="' + cellRef + '" t="inlineStr"><is><t>' + escapeXml(val) + '</t></is></c>';
+          cells += '<c r="' + cellRef + '"' + styleAttr + ' t="inlineStr"><is><t>' + escapeXml(val) + '</t></is></c>';
         }
       }
       sheetDataRows += '<row r="' + excelRow + '">' + cells + '</row>';
     }
 
-    // Auto column widths
     let colDefs = '<cols>';
     for (let c = 0; c < numCols; c++) {
       let maxLen = 8;
       for (let r = 0; r < numRows; r++) {
         const v = (r === 0) ? headers[c] : data[r][c];
-        if (v !== null && v !== undefined) {
-          const l = String(v).length;
-          if (l > maxLen) maxLen = l;
-        }
+        if (v !== null && v !== undefined) { const l = String(v).length; if (l > maxLen) maxLen = l; }
       }
-      const w = Math.min(maxLen + 2, 60);
-      colDefs += '<col min="' + (c+1) + '" max="' + (c+1) + '" width="' + w + '" bestFit="1" customWidth="1"/>';
+      colDefs += '<col min="' + (c+1) + '" max="' + (c+1) + '" width="' + Math.min(maxLen+2,60) + '" bestFit="1" customWidth="1"/>';
     }
     colDefs += '</cols>';
 
     const sheetXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
       + '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"'
       + ' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
-      + colDefs
-      + '<sheetData>' + sheetDataRows + '</sheetData>'
-      + '<tableParts count="1"><tablePart r:id="rId1"/></tableParts>'
-      + '</worksheet>';
+      + colDefs + '<sheetData>' + sheetDataRows + '</sheetData>'
+      + '<tableParts count="1"><tablePart r:id="rId1"/></tableParts></worksheet>';
 
-    // ---- table XML ----
     let tableCols = '';
     for (let c = 0; c < numCols; c++) {
       tableCols += '<tableColumn id="' + (c+1) + '" name="' + escapeXml(headers[c]) + '"/>';
     }
 
+    // Use TableStyleMedium2 (blue banded) to complement the header
     const tableXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
       + '<table xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"'
-      + ' id="1" name="CleanedData" displayName="CleanedData" ref="' + tableRef + '"'
-      + ' headerRowCount="1">'
+      + ' id="1" name="CleanedData" displayName="CleanedData" ref="' + tableRef + '" headerRowCount="1">'
       + '<autoFilter ref="' + tableRef + '"/>'
       + '<tableColumns count="' + numCols + '">' + tableCols + '</tableColumns>'
-      + '<tableStyleInfo name="TableStyleMedium15" showFirstColumn="0" showLastColumn="0"'
-      + ' showRowStripes="1" showColumnStripes="0"/>'
+      + '<tableStyleInfo name="TableStyleMedium2" showFirstColumn="0" showLastColumn="0" showRowStripes="1" showColumnStripes="0"/>'
       + '</table>';
 
-    // ---- rels & support files ----
     const sheetRelsXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
       + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
-      + '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/table"'
-      + ' Target="../tables/table1.xml"/>'
+      + '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/table" Target="../tables/table1.xml"/>'
       + '</Relationships>';
 
     const workbookXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
       + '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"'
       + ' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
-      + '<sheets><sheet name="Sheet1" sheetId="1" r:id="rId1"/></sheets>'
-      + '</workbook>';
+      + '<sheets><sheet name="Sheet1" sheetId="1" r:id="rId1"/></sheets></workbook>';
 
     const workbookRelsXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
       + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
-      + '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet"'
-      + ' Target="worksheets/sheet1.xml"/>'
+      + '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>'
       + '</Relationships>';
 
     const contentTypesXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
@@ -315,28 +469,63 @@
       + '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
       + '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
       + '<Override PartName="/xl/tables/table1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.table+xml"/>'
+      + '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
       + '</Types>';
 
     const relsXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
       + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
-      + '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument"'
-      + ' Target="xl/workbook.xml"/>'
+      + '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>'
+      + '</Relationships>';
+
+    const workbookRels2Xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+      + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+      + '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>'
+      + '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'
       + '</Relationships>';
 
     const zip = new JSZip();
     zip.file('[Content_Types].xml', contentTypesXml);
     zip.file('_rels/.rels', relsXml);
     zip.file('xl/workbook.xml', workbookXml);
-    zip.file('xl/_rels/workbook.xml.rels', workbookRelsXml);
+    zip.file('xl/_rels/workbook.xml.rels', workbookRels2Xml);
+    zip.file('xl/styles.xml', stylesXml);
     zip.file('xl/worksheets/sheet1.xml', sheetXml);
     zip.file('xl/worksheets/_rels/sheet1.xml.rels', sheetRelsXml);
     zip.file('xl/tables/table1.xml', tableXml);
 
     zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
       .then(function(blob) {
-        outputBlob = blob;
-        showStatus(origName, stats);
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = outputFilename; a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
       });
+  }
+
+  function downloadFile() {
+    const selected = new Set(getSelectedOptions());
+    if (selected.size === 0) return;
+
+    const headerRow = cleanedData[0];
+    const staffTrainerIdx = headerRow.indexOf('Staff Trainer');
+    const dropCols = new Set();
+    if (staffTrainerIdx !== -1) dropCols.add(staffTrainerIdx);
+    if (customFieldColIndex !== -1) dropCols.add(customFieldColIndex);
+
+    const finalData = [];
+    finalData.push(headerRow.filter((_, i) => !dropCols.has(i)));
+
+    for (let r = 1; r < cleanedData.length; r++) {
+      const row = cleanedData[r];
+      const cfVal = (row[customFieldColIndex] !== null && row[customFieldColIndex] !== undefined)
+        ? String(row[customFieldColIndex]).trim() : '(blank)';
+      if (selected.has(cfVal)) {
+        finalData.push(row.filter((_, i) => !dropCols.has(i)));
+      }
+    }
+
+    if (finalData.length <= 1) { showError('No rows matched the selected filters.'); return; }
+    buildXlsx(finalData);
   }
 
   function showStatus(filename, stats) {
@@ -348,28 +537,20 @@
     document.getElementById('status-area').style.display = 'block';
   }
 
-  function downloadFile() {
-    if (!outputBlob) return;
-    const url = URL.createObjectURL(outputBlob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = outputFilename;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  }
-
   function showError(msg) {
     const el = document.getElementById('error-msg');
     el.textContent = msg;
     el.style.display = 'block';
-    document.getElementById('status-area').style.display = 'none';
   }
 
   function resetTool() {
-    outputBlob = null;
+    cleanedData = [];
+    customFieldColIndex = -1;
     document.getElementById('status-area').style.display = 'none';
+    document.getElementById('filter-area').style.display = 'none';
     document.getElementById('error-msg').style.display = 'none';
     document.getElementById('file-input').value = '';
+    document.getElementById('filter-options').innerHTML = '';
   }
 </script>
 </body>
