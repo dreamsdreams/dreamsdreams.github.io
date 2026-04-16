@@ -438,13 +438,13 @@
       tableCols += '<tableColumn id="' + (c+1) + '" name="' + escapeXml(headers[c]) + '"/>';
     }
 
-    // Use TableStyleMedium2 (blue banded) to complement the header
+    // Use TableStyleLight1 (banded) to complement the header
     const tableXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
       + '<table xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"'
       + ' id="1" name="CleanedData" displayName="CleanedData" ref="' + tableRef + '" headerRowCount="1">'
       + '<autoFilter ref="' + tableRef + '"/>'
       + '<tableColumns count="' + numCols + '">' + tableCols + '</tableColumns>'
-      + '<tableStyleInfo name="TableStyleMedium2" showFirstColumn="0" showLastColumn="0" showRowStripes="1" showColumnStripes="0"/>'
+      + '<tableStyleInfo name="TableStyleLight1" showFirstColumn="0" showLastColumn="0" showRowStripes="1" showColumnStripes="0"/>'
       + '</table>';
 
     const sheetRelsXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
