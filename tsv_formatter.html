@@ -259,7 +259,7 @@ function processRow(row) {
   r[COL_A] = formatDate(r[COL_A]);
 
   // H: chars 13-33 (substring 12,32)
-  r[COL_H] = (r[COL_H] || '').substring(12, 32).trim();
+  r[COL_H] = (r[COL_H] || '').substring(12, 33).trim();
 
   // R: text between 3rd and 4th quotation marks
   r[COL_R] = extractBetweenQuotes(r[COL_R] || '', 3, 4);
