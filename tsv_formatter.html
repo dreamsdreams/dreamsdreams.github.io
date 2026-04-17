@@ -153,16 +153,13 @@
   </div>
   <div id="file-chosen" class="file-chosen"></div>
   <div id="file-error" class="error"></div>
-  <div class="page-type-row" id="page-type-row">
-    Detected page type: <span id="page-type-badge"></span>
-  </div>
 </div>
 
 <!-- STEP 2: FILTER (VPT only) -->
 <div class="card" id="filter-card">
-  <div class="card-title">Step 2 — Filter by Custom Field (VPT only)</div>
+  <div class="card-title">Step 2 — Filter by R Column (VPT only)</div>
   <div class="filter-row">
-    <label for="cf-filter">Custom Fields:</label>
+    <label for="cf-filter">R Column:</label>
     <select id="cf-filter"><option value="">— All —</option></select>
     <button class="btn btn-dark" onclick="applyFilter()">Apply</button>
     <button class="btn" onclick="clearFilter()">Clear</button>
@@ -236,7 +233,6 @@ function parseTSV(text) {
   const ch5 = sample[1].charAt(4).toUpperCase();
   pageType = ch5 === 'A' ? 'VPT' : ch5 === 'P' ? 'In-Person' : 'Unknown';
 
-  showPageType();
   processedAll = dataRows.map(processRow);
   filtered     = processedAll.slice();
 
@@ -258,8 +254,8 @@ function processRow(row) {
   // A: format date
   r[COL_A] = formatDate(r[COL_A]);
 
-  // H: chars 13-33 (substring 12,32)
-  r[COL_H] = (r[COL_H] || '').substring(12, 33).trim();
+  // H: chars 13-34 (substring 12,34)
+  r[COL_H] = (r[COL_H] || '').substring(12, 34).trim();
 
   // R: text between 3rd and 4th quotation marks
   r[COL_R] = extractBetweenQuotes(r[COL_R] || '', 3, 4);
@@ -302,13 +298,12 @@ function extractBetweenQuotes(str, nStart, nEnd) {
 }
 
 /* ── Filter ──────────────────────────────────────────── */
-function getCustomFieldIndex() {
-  return buildFinalHeaders().findIndex(h => h && h.toLowerCase().includes('custom'));
-}
+// Original col R = index 17. After deleting cols 4,5,6 (3 cols) and cols 9-16 (8 cols),
+// kept order is: 0,1,2,3,7,8,17,... so R lands at final index 6.
+const R_FINAL_IDX = 6;
 
 function setupFilter() {
-  const idx  = getCustomFieldIndex();
-  const vals = [...new Set(processedAll.map(r => (r[idx] || '').trim()).filter(Boolean))].sort();
+  const vals = [...new Set(processedAll.map(r => (r[R_FINAL_IDX] || '').trim()).filter(Boolean))].sort();
   const sel  = document.getElementById('cf-filter');
   sel.innerHTML = '<option value="">— All —</option>';
   vals.forEach(v => {
@@ -321,8 +316,7 @@ function applyFilter() {
   const val = document.getElementById('cf-filter').value;
   if (!val) { filtered = processedAll.slice(); document.getElementById('filter-status').textContent = ''; }
   else {
-    const idx = getCustomFieldIndex();
-    filtered  = processedAll.filter(r => (r[idx] || '').trim() === val);
+    filtered  = processedAll.filter(r => (r[R_FINAL_IDX] || '').trim() === val);
     document.getElementById('filter-status').textContent =
       `Showing ${filtered.length} of ${processedAll.length} rows`;
   }
@@ -418,16 +412,6 @@ function downloadXLSX() {
 
   /* Write with cellStyles enabled */
   XLSX.writeFile(wb, 'formatted_output.xlsx', { bookType: 'xlsx', cellStyles: true });
-}
-
-/* ── UI helpers ─────────────────────────────────────── */
-function showPageType() {
-  const row   = document.getElementById('page-type-row');
-  const badge = document.getElementById('page-type-badge');
-  row.style.display = 'block';
-  badge.textContent = pageType;
-  badge.className   = 'badge ' +
-    (pageType === 'VPT' ? 'badge-vpt' : pageType === 'In-Person' ? 'badge-person' : 'badge-unk');
 }
 
 function showError(msg) { document.getElementById('file-error').textContent = msg; }
