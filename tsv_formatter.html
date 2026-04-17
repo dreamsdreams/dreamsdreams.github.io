@@ -1,288 +1,473 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TSV Formatter</title>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{font-family:Calibri,Arial,sans-serif;background:#f0f0ee;color:#1a1a1a;min-height:100vh;padding:2rem 1.5rem}
-h1{font-size:22px;font-weight:600;color:#1a1a1a;margin-bottom:.25rem}
-.subtitle{font-size:13px;color:#666;margin-bottom:2rem}
-.card{background:#fff;border:1px solid #ddd;border-radius:10px;padding:1.5rem;margin-bottom:1.25rem;max-width:1300px}
-.card-title{font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:#888;margin-bottom:1rem}
-.upload-area{border:2px dashed #ccc;border-radius:8px;padding:2.5rem 1rem;text-align:center;cursor:pointer;transition:border-color .15s,background .15s;user-select:none}
-.upload-area:hover,.upload-area.drag-over{border-color:#3a3a3a;background:#f7f7f7}
-.upload-area input{display:none}
-.upload-icon{font-size:28px;margin-bottom:.5rem;color:#999}
-.upload-text{font-size:15px;color:#555}
-.upload-text strong{color:#1a1a1a;font-weight:600}
-.upload-hint{font-size:12px;color:#aaa;margin-top:.4rem}
-.file-chosen{font-size:13px;color:#3a3a3a;margin-top:.75rem;font-weight:500}
-.filter-section{display:none}
-.filter-prompt{background:#dceeff;border:1px solid #85b7eb;border-radius:10px;padding:1.25rem 1.5rem;margin-bottom:1rem}
-.filter-prompt p{font-size:14px;color:#185fa5;margin-bottom:1rem;font-weight:500}
-.filter-controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.filter-controls label{font-size:14px;color:#555;font-weight:500}
-select{padding:7px 12px;border:1px solid #ccc;border-radius:6px;font-size:13px;background:#fff;color:#1a1a1a;min-width:220px;cursor:pointer;font-family:inherit}
-select:focus{outline:2px solid #3a3a3a;outline-offset:1px}
-.btn-row{display:flex;gap:10px;margin-top:1.25rem;flex-wrap:wrap}
-.btn{padding:8px 18px;border-radius:6px;border:1px solid #bbb;background:#fff;color:#1a1a1a;font-size:13px;font-weight:500;cursor:pointer;transition:background .12s,border-color .12s;font-family:inherit}
-.btn:hover{background:#f2f2f2;border-color:#999}
-.btn-dark{background:#3a3a3a;color:#fff;border-color:#3a3a3a}
-.btn-dark:hover{background:#555;border-color:#555}
-.btn-ghost{background:transparent;border:none;color:#888;font-size:13px;cursor:pointer;padding:8px 10px;font-family:inherit}
-.btn-ghost:hover{color:#1a1a1a}
-.actions-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:1rem}
-.row-count{font-size:13px;color:#888}
-.error{color:#c0392b;font-size:13px;margin-top:.6rem;font-weight:500}
-.table-wrap{overflow-x:auto}
-table.dt{width:100%;border-collapse:collapse;font-size:12.5px;font-family:Calibri,Arial,sans-serif}
-table.dt thead tr{background:#3a3a3a;color:#fff}
-table.dt thead th{padding:9px 11px;text-align:center;font-weight:600;font-size:12px;letter-spacing:.02em;border:1px solid #555;white-space:nowrap}
-table.dt tbody tr:nth-child(odd){background:#ffffff}
-table.dt tbody tr:nth-child(even){background:#f2f2f2}
-table.dt td{padding:7px 10px;text-align:center;border:1px solid #d0d0d0;vertical-align:middle}
-#output-card{display:none}
-.status-note{font-size:13px;color:#666;margin-top:.5rem}
-.badge{display:inline-block;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;margin-left:8px;vertical-align:middle}
-.badge-vpt{background:#dceeff;color:#1a5fa8}
-.badge-person{background:#d8f5e9;color:#1a7a46}
-.badge-unk{background:#fff3cd;color:#856404}
-.filter-tag{display:inline-flex;align-items:center;gap:6px;background:#dceeff;color:#1a5fa8;border-radius:20px;padding:3px 12px;font-size:12px;font-weight:500}
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bookings to Roster</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f5f5f3; color: #1a1a18; min-height: 100vh;
+      display: flex; align-items: flex-start; justify-content: center; padding: 3rem 1rem;
+    }
+    .card {
+      background: #fff; border-radius: 16px; border: 0.5px solid rgba(0,0,0,0.12);
+      padding: 2rem; width: 100%; max-width: 620px;
+    }
+    h1 { font-size: 20px; font-weight: 500; margin-bottom: 0.25rem; }
+    .subtitle { font-size: 14px; color: #666; margin-bottom: 1.5rem; line-height: 1.5; }
+    #drop-zone {
+      border: 1.5px dashed #bbb; border-radius: 12px; padding: 2.5rem 1.5rem;
+      text-align: center; cursor: pointer; transition: background 0.15s, border-color 0.15s;
+    }
+    #drop-zone:hover, #drop-zone.dragover { background: #f5f5f3; border-color: #888; }
+    .drop-icon { font-size: 32px; margin-bottom: 0.5rem; line-height: 1; }
+    .drop-title { font-size: 15px; font-weight: 500; margin-bottom: 4px; }
+    .drop-hint { font-size: 13px; color: #888; }
+    #status-area { display: none; margin-top: 1.25rem; }
+    .status-box {
+      background: #f9f9f7; border-radius: 10px; border: 0.5px solid rgba(0,0,0,0.1);
+      padding: 1rem 1.25rem; margin-bottom: 1rem;
+    }
+    .status-row {
+      display: flex; justify-content: space-between; font-size: 13px;
+      padding: 4px 0; border-bottom: 0.5px solid rgba(0,0,0,0.06); color: #555;
+    }
+    .status-row:last-child { border-bottom: none; }
+    .status-row span:last-child { font-weight: 500; color: #1a1a18; }
+    #filter-area { display: none; margin-top: 1.25rem; }
+    .filter-label {
+      font-size: 13px; font-weight: 500; color: #1a1a18; margin-bottom: 0.6rem;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .filter-label a { font-size: 12px; font-weight: 400; color: #888; cursor: pointer; text-decoration: none; }
+    .filter-label a:hover { color: #1a1a18; }
+    #filter-options {
+      border: 0.5px solid rgba(0,0,0,0.12); border-radius: 10px; overflow: hidden; margin-bottom: 1rem;
+    }
+    .filter-option {
+      display: flex; align-items: center; gap: 10px; padding: 9px 14px; font-size: 13px;
+      color: #1a1a18; border-bottom: 0.5px solid rgba(0,0,0,0.06); cursor: pointer;
+      transition: background 0.1s; user-select: none;
+    }
+    .filter-option:last-child { border-bottom: none; }
+    .filter-option:hover { background: #f5f5f3; }
+    .filter-option input[type="checkbox"] { width: 15px; height: 15px; cursor: pointer; flex-shrink: 0; accent-color: #1a1a18; }
+    .filter-option .count { margin-left: auto; font-size: 12px; color: #aaa; white-space: nowrap; }
+    .no-options { padding: 12px 14px; font-size: 13px; color: #aaa; font-style: italic; }
+    .download-btn {
+      display: block; width: 100%; padding: 10px; font-size: 14px; font-weight: 500;
+      font-family: inherit; background: #1a1a18; color: #fff; border: none; border-radius: 10px;
+      cursor: pointer; transition: background 0.12s;
+    }
+    .download-btn:hover { background: #333; }
+    .download-btn:disabled { background: #999; cursor: not-allowed; }
+    .download-btn:active:not(:disabled) { transform: scale(0.99); }
+    .reset-btn {
+      display: block; width: 100%; margin-top: 0.5rem; padding: 8px; font-size: 13px;
+      font-family: inherit; background: transparent; color: #888;
+      border: 0.5px solid rgba(0,0,0,0.15); border-radius: 10px; cursor: pointer; transition: background 0.12s;
+    }
+    .reset-btn:hover { background: #f0f0ee; }
+    #error-msg {
+      display: none; color: #a32d2d; font-size: 13px; margin-top: 0.75rem;
+      padding: 10px 14px; background: #fcebeb; border-radius: 8px;
+    }
+    .selected-note { font-size: 12px; color: #888; margin-bottom: 0.75rem; }
+  </style>
 </head>
 <body>
-
-<h1>TSV Formatter</h1>
-<p class="subtitle">Upload a TSV file — it will be cleaned, formatted, and ready to download as Excel (.xlsx).</p>
-
-<!-- STEP 1: UPLOAD -->
 <div class="card">
-  <div class="card-title">Step 1 — Upload TSV file</div>
-  <div class="upload-area" id="drop-zone" onclick="document.getElementById('file-input').click()">
-    <div class="upload-icon">&#128196;</div>
-    <div class="upload-text"><strong>Click to choose</strong> or drag &amp; drop a .tsv file</div>
-    <div class="upload-hint">Tab-separated values (.tsv / .txt)</div>
-    <input type="file" id="file-input" accept=".tsv,.txt,.tab">
+  <h1>Bookings to Printable Provider Roster</h1>
+  <p class="subtitle">Upload an Excel or CSV from Microsoft Bookings to reformat.</p>
+  <div id="drop-zone"
+    onclick="document.getElementById('file-input').click()"
+    ondragover="event.preventDefault();this.classList.add('dragover')"
+    ondragleave="this.classList.remove('dragover')"
+    ondrop="handleDrop(event)">
+    <div class="drop-icon">📄</div>
+    <p class="drop-title">Drop your file here</p>
+    <p class="drop-hint">or click to browse — .xlsx, .xls, .tsv supported</p>
+    <input type="file" id="file-input" accept=".xlsx,.xls,.tsv" style="display:none" onchange="handleFile(this.files[0])">
   </div>
-  <div id="file-chosen" class="file-chosen"></div>
-  <div id="file-error" class="error"></div>
-</div>
-
-<!-- STEP 2: FILTER -->
-<div class="card filter-section" id="filter-card">
-  <div class="card-title">Step 2 — Filter rows <span id="page-type-badge"></span></div>
-
-  <div class="filter-prompt" id="filter-prompt">
-    <p id="filter-prompt-msg">Choose how to filter the data before generating your file.</p>
-    <div id="filter-controls-area"></div>
-    <div class="btn-row">
-      <button class="btn btn-dark" onclick="confirmFilter()">Apply &amp; Generate</button>
-      <button class="btn-ghost" onclick="skipFilter()">No filter — include all rows</button>
+  <div id="error-msg"></div>
+  <div id="status-area">
+    <div class="status-box">
+      <div class="status-row"><span>File</span><span id="s-filename">—</span></div>
+      <div class="status-row"><span>Rows</span><span id="s-rows">—</span></div>
     </div>
   </div>
-
-  <div id="active-filter-row" style="display:none;margin-bottom:1rem;font-size:13px;color:#666;align-items:center;gap:8px;flex-wrap:wrap">
-    Filtered by: <span class="filter-tag" id="active-filter-tag"></span>
-    <button class="btn-ghost" onclick="resetFilter()" style="padding:4px 8px">Change filter</button>
+  <div id="filter-area">
+    <div class="filter-label">
+      <span>Filter by Facility</span>
+      <span>
+        <a onclick="selectAll()">Select all</a>&nbsp;·&nbsp;<a onclick="selectNone()">Clear</a>
+      </span>
+    </div>
+    <div id="filter-options"></div>
+    <p class="selected-note" id="selected-note"></p>
+    <button class="download-btn" id="download-btn" onclick="downloadFile()" disabled>Download cleaned file (.xlsx)</button>
+    <button class="reset-btn" onclick="resetTool()">Upload another file</button>
   </div>
-</div>
-
-<!-- STEP 3: PREVIEW & DOWNLOAD -->
-<div class="card" id="output-card">
-  <div class="card-title">Step 3 — Preview &amp; Download</div>
-  <div class="actions-row">
-    <button class="btn btn-dark" onclick="downloadXLSX()">&#11015; Download as Excel (.xlsx)</button>
-    <span class="row-count" id="row-count"></span>
-  </div>
-  <div class="table-wrap">
-    <table class="dt">
-      <thead id="preview-head"></thead>
-      <tbody id="preview-body"></tbody>
-    </table>
-  </div>
-  <div class="status-note" id="preview-note"></div>
 </div>
 
 <script>
-let rawHeaders=[];
-let processedAll=[];
-let filtered=[];
-let pageType='';
+  let cleanedData = [];
+  let customFieldColIndex = -1;
+  let outputFilename = 'cleaned.xlsx';
 
-const COL_A=0,COL_H=7,COL_R=17;
-const DELETE_COLS=new Set([4,5,6,9,10,11,12,13,14,15,16,18,19,20]);
-const R_FINAL_IDX=6;
+  const COLS_TO_REMOVE = new Set([4, 5, 6, 9, 10, 11, 12, 13, 14, 15, 16, 18, 19, 20]);
+  const COL_H_INDEX = 7;
+  const COL_R_INDEX = 17;
 
-const dropZone=document.getElementById('drop-zone');
-const fileInput=document.getElementById('file-input');
-
-dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.classList.add('drag-over')});
-dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('drag-over'));
-dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.classList.remove('drag-over');if(e.dataTransfer.files[0])handleFile(e.dataTransfer.files[0])});
-fileInput.addEventListener('change',()=>{if(fileInput.files[0])handleFile(fileInput.files[0])});
-
-function handleFile(file){
-  clearError();
-  document.getElementById('file-chosen').textContent='📄 '+file.name;
-  document.getElementById('output-card').style.display='none';
-  document.getElementById('active-filter-row').style.display='none';
-  const reader=new FileReader();
-  reader.onload=e=>parseTSV(e.target.result);
-  reader.readAsText(file);
-}
-
-function parseTSV(text){
-  const lines=text.split(/\r?\n/).filter(l=>l.trim()!=='');
-  if(lines.length<2){showError('File appears empty or has no data rows.');return}
-  const allRows=lines.map(l=>l.split('\t'));
-  rawHeaders=allRows[0];
-  const dataRows=allRows.slice(1);
-  const sample=dataRows.find(r=>r[1]&&r[1].length>=5);
-  if(!sample){showError('Could not read page type from column B. Check file format.');return}
-  const ch5=sample[1].charAt(4).toUpperCase();
-  pageType=ch5==='A'?'VPT':ch5==='P'?'In-Person':'Unknown';
-  processedAll=dataRows.map(processRow);
-  showFilterStep();
-}
-
-function showFilterStep(){
-  const badge=document.getElementById('page-type-badge');
-  badge.className='badge '+(pageType==='VPT'?'badge-vpt':pageType==='In-Person'?'badge-person':'badge-unk');
-  badge.textContent=pageType;
-
-  const area=document.getElementById('filter-controls-area');
-  const msg=document.getElementById('filter-prompt-msg');
-
-  if(pageType==='VPT'){
-    const vals=[...new Set(processedAll.map(r=>(r[R_FINAL_IDX]||'').trim()).filter(Boolean))].sort();
-    msg.textContent='This is a VPT file with '+processedAll.length+' rows. You can filter by the R column before downloading.';
-    area.innerHTML='<div class="filter-controls"><label for="cf-filter">R Column:</label><select id="cf-filter"><option value="">— All rows ('+processedAll.length+') —</option>'+vals.map(v=>'<option value="'+esc(v)+'">'+esc(v)+'</option>').join('')+'</select></div>';
-  } else {
-    msg.textContent='This is an '+pageType+' file with '+processedAll.length+' rows. No column-based filter is available for this type.';
-    area.innerHTML='<p style="font-size:13px;color:#185fa5">All '+processedAll.length+' rows will be included.</p>';
+  function extractBetween3rdAnd4thQuote(str) {
+    if (!str) return '';
+    const s = String(str);
+    let count = 0, start = -1;
+    for (let i = 0; i < s.length; i++) {
+      if (s[i] === '"') {
+        count++;
+        if (count === 3) start = i + 1;
+        if (count === 4) return s.slice(start, i).trim();
+      }
+    }
+    return '';
   }
 
-  document.getElementById('filter-card').style.display='block';
-  document.getElementById('filter-prompt').style.display='block';
-  document.getElementById('output-card').style.display='none';
-}
-
-function confirmFilter(){
-  const sel=document.getElementById('cf-filter');
-  const val=sel?sel.value:'';
-  if(val){
-    filtered=processedAll.filter(r=>(r[R_FINAL_IDX]||'').trim()===val);
-    const row=document.getElementById('active-filter-row');
-    document.getElementById('active-filter-tag').textContent=val;
-    row.style.display='flex';
-  } else {
-    filtered=processedAll.slice();
-    document.getElementById('active-filter-row').style.display='none';
+  function handleDrop(e) {
+    e.preventDefault();
+    document.getElementById('drop-zone').classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file) handleFile(file);
   }
-  document.getElementById('filter-prompt').style.display='none';
-  renderTable(filtered);
-  document.getElementById('output-card').style.display='block';
-}
 
-function skipFilter(){
-  filtered=processedAll.slice();
-  document.getElementById('active-filter-row').style.display='none';
-  document.getElementById('filter-prompt').style.display='none';
-  renderTable(filtered);
-  document.getElementById('output-card').style.display='block';
-}
-
-function resetFilter(){
-  document.getElementById('output-card').style.display='none';
-  document.getElementById('active-filter-row').style.display='none';
-  document.getElementById('filter-prompt').style.display='block';
-}
-
-function processRow(row){
-  const r=row.slice();
-  while(r.length<rawHeaders.length)r.push('');
-  r[COL_A]=formatDate(r[COL_A]);
-  r[COL_H]=(r[COL_H]||'').substring(12,34).trim();
-  r[COL_R]=extractBetweenQuotes(r[COL_R]||'',3,4);
-  return r.filter((_,i)=>!DELETE_COLS.has(i));
-}
-
-function buildFinalHeaders(){
-  const kept=rawHeaders.filter((_,i)=>!DELETE_COLS.has(i));
-  if(kept[4]!==undefined)kept[4]='Staff Trainer';
-  return kept;
-}
-
-function formatDate(val){
-  if(!val||!val.trim())return val;
-  const d=new Date(val);
-  if(isNaN(d.getTime()))return val;
-  const mo=d.toLocaleString('default',{month:'short'});
-  const dy=d.getDate(),yr=d.getFullYear();
-  let hr=d.getHours();
-  const mn=d.getMinutes().toString().padStart(2,'0');
-  const ap=hr>=12?'PM':'AM';
-  hr=hr%12||12;
-  return mo+' '+dy+', '+yr+' '+hr+':'+mn+' '+ap;
-}
-
-function extractBetweenQuotes(str,nStart,nEnd){
-  const re=/['"]/g;
-  let m,count=0,start=-1;
-  while((m=re.exec(str))!==null){
-    count++;
-    if(count===nStart)start=m.index+1;
-    if(count===nEnd&&start>=0)return str.substring(start,m.index);
+  function handleFile(file) {
+    if (!file) return;
+    const isTsv = file.name.toLowerCase().endsWith('.tsv');
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        let wb;
+        if (isTsv) {
+          const text = new TextDecoder('utf-8').decode(new Uint8Array(e.target.result));
+          wb = XLSX.read(text, { type: 'string', FS: '\t', cellDates: true });
+        } else {
+          wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array', cellDates: true });
+        }
+        const result = processWorkbook(wb);
+        cleanedData = result.data;
+        customFieldColIndex = result.customFieldColIndex;
+        outputFilename = file.name.replace(/\.[^.]+$/, '') + '_cleaned.xlsx';
+        showStatus(file.name, result.stats);
+        buildFilterUI();
+        document.getElementById('error-msg').style.display = 'none';
+      } catch(err) {
+        showError('Could not read file. Make sure it\'s a valid Excel or TSV file.');
+        console.error(err);
+      }
+    };
+    reader.readAsArrayBuffer(file);
   }
-  return str;
-}
 
-function renderTable(rows){
-  const hdrs=buildFinalHeaders();
-  const PREVIEW=300;
-  document.getElementById('preview-head').innerHTML='<tr>'+hdrs.map(h=>'<th>'+esc(h)+'</th>').join('')+'</tr>';
-  document.getElementById('preview-body').innerHTML=rows.slice(0,PREVIEW).map(r=>'<tr>'+hdrs.map((_,i)=>'<td>'+esc(r[i]!==undefined?r[i]:'')+'</td>').join('')+'</tr>').join('');
-  document.getElementById('row-count').textContent=rows.length+' row'+(rows.length!==1?'s':'')+(rows.length>PREVIEW?' (preview capped at '+PREVIEW+'; full data downloads)':'');
-  document.getElementById('preview-note').textContent=rows.length>PREVIEW?'All '+rows.length+' rows will be included in the downloaded file.':'';
-}
-
-function downloadXLSX(){
-  if(!filtered.length){alert('No data to download.');return}
-  const hdrs=buildFinalHeaders();
-  const wsData=[hdrs,...filtered.map(r=>hdrs.map((_,i)=>r[i]!==undefined?r[i]:''))];
-  const wb=XLSX.utils.book_new();
-  const ws=XLSX.utils.aoa_to_sheet(wsData);
-  const colWidths=hdrs.map((h,ci)=>{
-    let max=(h||'').length;
-    filtered.forEach(r=>{const v=r[ci]||'';if(v.length>max)max=v.length});
-    return{wch:Math.min(Math.max(max+2,10),40)};
-  });
-  ws['!cols']=colWidths;
-  const range=XLSX.utils.decode_range(ws['!ref']);
-  for(let c=range.s.c;c<=range.e.c;c++){
-    const addr=XLSX.utils.encode_cell({r:0,c});
-    if(!ws[addr])continue;
-    ws[addr].s={fill:{fgColor:{rgb:'3A3A3A'}},font:{bold:true,color:{rgb:'FFFFFF'},name:'Calibri',sz:11},alignment:{horizontal:'center',vertical:'center',wrapText:false},border:{bottom:{style:'thin',color:{rgb:'555555'}}}};
+  function processWorkbook(wb) {
+    let allData = [], totalStats = { origCols: 0, removed: 0, remaining: 0, rows: 0 }, cfColIdx = -1;
+    wb.SheetNames.forEach(function(sheetName) {
+      const ws = wb.Sheets[sheetName];
+      if (!ws['!ref']) return;
+      const range = XLSX.utils.decode_range(ws['!ref']);
+      const numOrigCols = range.e.c + 1, numRows = range.e.r + 1;
+      const newData = [];
+      let tempIdx = 0, cfNewIdx = -1;
+      for (let c = range.s.c; c <= range.e.c; c++) {
+        if (!COLS_TO_REMOVE.has(c)) { if (c === COL_R_INDEX) cfNewIdx = tempIdx; tempIdx++; }
+      }
+      cfColIdx = cfNewIdx;
+      for (let r = range.s.r; r <= range.e.r; r++) {
+        const newRow = [];
+        for (let c = range.s.c; c <= range.e.c; c++) {
+          if (!COLS_TO_REMOVE.has(c)) {
+            const cell = ws[XLSX.utils.encode_cell({ r, c })];
+            let val = cell ? cell.v : null;
+            if (c === COL_H_INDEX) {
+              if (r === range.s.r) val = 'Staff Trainer';
+              else if (val !== null && val !== undefined) val = String(val).slice(12, 33);
+            }
+            if (c === COL_R_INDEX) {
+              if (r === range.s.r) val = 'Custom Fields';
+              else if (val !== null && val !== undefined) val = extractBetween3rdAnd4thQuote(String(val));
+            }
+            if (c === 0 && val instanceof Date) val = val.toLocaleString();
+            newRow.push(val);
+          }
+        }
+        newData.push(newRow);
+      }
+      allData = newData;
+      const removedCount = Array.from(COLS_TO_REMOVE).filter(c => c <= range.e.c).length;
+      totalStats = { origCols: numOrigCols, removed: removedCount, remaining: numOrigCols - removedCount, rows: numRows - 1 };
+    });
+    return { data: allData, stats: totalStats, customFieldColIndex: cfColIdx };
   }
-  for(let r=1;r<=range.e.r;r++){
-    const bg=r%2===1?'FFFFFF':'F2F2F2';
-    for(let c=range.s.c;c<=range.e.c;c++){
-      const addr=XLSX.utils.encode_cell({r,c});
-      if(!ws[addr])ws[addr]={v:'',t:'s'};
-      ws[addr].s={fill:{fgColor:{rgb:bg}},font:{name:'Calibri',sz:11,color:{rgb:'1A1A1A'}},alignment:{horizontal:'center',vertical:'center'},border:{top:{style:'thin',color:{rgb:'D0D0D0'}},bottom:{style:'thin',color:{rgb:'D0D0D0'}},left:{style:'thin',color:{rgb:'D0D0D0'}},right:{style:'thin',color:{rgb:'D0D0D0'}}}};
+
+  function buildFilterUI() {
+    const container = document.getElementById('filter-options');
+    container.innerHTML = '';
+    if (customFieldColIndex === -1 || cleanedData.length <= 1) {
+      container.innerHTML = '<div class="no-options">No Custom Fields column found.</div>';
+      document.getElementById('filter-area').style.display = 'block';
+      return;
+    }
+    const counts = {};
+    for (let r = 1; r < cleanedData.length; r++) {
+      const val = cleanedData[r][customFieldColIndex];
+      const key = (val !== null && val !== undefined && String(val).trim() !== '') ? String(val).trim() : '(blank)';
+      counts[key] = (counts[key] || 0) + 1;
+    }
+    const options = Object.keys(counts).sort();
+    if (options.length === 0) {
+      container.innerHTML = '<div class="no-options">No values found in Custom Fields.</div>';
+    } else {
+      options.forEach(function(opt) {
+        const n = counts[opt];
+        const label = n + ' entr' + (n === 1 ? 'y' : 'ies');
+        const div = document.createElement('div');
+        div.className = 'filter-option';
+        div.innerHTML = '<input type="checkbox" id="opt_' + encodeURIComponent(opt) + '" value="' + escapeHtml(opt) + '" onchange="updateDownloadBtn()">'
+          + '<label for="opt_' + encodeURIComponent(opt) + '" style="flex:1;cursor:pointer;">' + escapeHtml(opt) + '</label>'
+          + '<span class="count">' + label + '</span>';
+        container.appendChild(div);
+      });
+    }
+    document.getElementById('filter-area').style.display = 'block';
+    updateDownloadBtn();
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function getSelectedOptions() {
+    return Array.from(document.querySelectorAll('#filter-options input[type="checkbox"]:checked')).map(cb => cb.value);
+  }
+
+  function updateDownloadBtn() {
+    const selected = getSelectedOptions();
+    const btn = document.getElementById('download-btn');
+    const note = document.getElementById('selected-note');
+    if (selected.length === 0) {
+      btn.disabled = true;
+      note.textContent = 'Select at least one option to download.';
+    } else {
+      btn.disabled = false;
+      const selSet = new Set(selected);
+      const matching = cleanedData.slice(1).filter(row => {
+        const val = (row[customFieldColIndex] !== null && row[customFieldColIndex] !== undefined)
+          ? String(row[customFieldColIndex]).trim() : '(blank)';
+        return selSet.has(val);
+      }).length;
+      note.textContent = selected.length + ' option' + (selected.length > 1 ? 's' : '') + ' selected — ' + matching + ' matching row' + (matching !== 1 ? 's' : '');
     }
   }
-  ws['!freeze']={xSplit:0,ySplit:1};
-  XLSX.utils.book_append_sheet(wb,ws,'Formatted Data');
-  XLSX.writeFile(wb,'formatted_output.xlsx',{bookType:'xlsx',cellStyles:true});
-}
 
-function showError(msg){document.getElementById('file-error').textContent=msg}
-function clearError(){document.getElementById('file-error').textContent=''}
-function esc(str){return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+  function selectAll() { document.querySelectorAll('#filter-options input[type="checkbox"]').forEach(cb => cb.checked = true); updateDownloadBtn(); }
+  function selectNone() { document.querySelectorAll('#filter-options input[type="checkbox"]').forEach(cb => cb.checked = false); updateDownloadBtn(); }
+
+  // ---- xlsx building ----
+
+  function colLetter(n) {
+    let s = ''; n++;
+    while (n > 0) { n--; s = String.fromCharCode(65 + (n % 26)) + s; n = Math.floor(n / 26); }
+    return s;
+  }
+
+  function escapeXml(v) {
+    if (v === null || v === undefined) return '';
+    return String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');
+  }
+
+  function sanitizeHeaders(headerRow) {
+    const seen = {};
+    return headerRow.map(function(h, i) {
+      let name = (h !== null && h !== undefined && String(h).trim() !== '') ? String(h).trim() : ('Column' + (i+1));
+      name = name.replace(/[\[\]']/g, '');
+      if (name === '') name = 'Column' + (i+1);
+      const base = name; let counter = 2;
+      while (seen[name.toLowerCase()]) { name = base + '_' + counter; counter++; }
+      seen[name.toLowerCase()] = true;
+      return name;
+    });
+  }
+
+  function buildXlsx(data) {
+    if (!data || data.length === 0) { showError('No data found.'); return; }
+    const numRows = data.length, numCols = data[0].length;
+    const lastCol = colLetter(numCols - 1);
+    const tableRef = 'A1:' + lastCol + numRows;
+    const headers = sanitizeHeaders(data[0]);
+
+    const stylesXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+      + '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+      + '<fonts count="2">'
+      + '<font><sz val="11"/><name val="Calibri"/></font>'
+      + '<font><sz val="11"/><b/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>'
+      + '</fonts>'
+      + '<fills count="3">'
+      + '<fill><patternFill patternType="none"/></fill>'
+      + '<fill><patternFill patternType="gray125"/></fill>'
+      + '<fill><patternFill patternType="solid"><fgColor rgb="FF1F5C99"/></patternFill></fill>'
+      + '</fills>'
+      + '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>'
+      + '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
+      + '<cellXfs count="3">'
+      + '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'
+      + '<xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment horizontal="center"/></xf>'
+      + '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment horizontal="center"/></xf>'
+      + '</cellXfs>'
+      + '</styleSheet>';
+
+    let sheetDataRows = '';
+    for (let r = 0; r < numRows; r++) {
+      const excelRow = r + 1;
+      let cells = '';
+      for (let c = 0; c < numCols; c++) {
+        const cellRef = colLetter(c) + excelRow;
+        const val = (r === 0) ? headers[c] : data[r][c];
+        if (val === null || val === undefined || val === '') continue;
+        const isNum = (r > 0) && (typeof val === 'number');
+        const styleAttr = ' s="' + (r === 0 ? '1' : '2') + '"';
+        if (isNum) {
+          cells += '<c r="' + cellRef + '"' + styleAttr + '><v>' + val + '</v></c>';
+        } else {
+          cells += '<c r="' + cellRef + '"' + styleAttr + ' t="inlineStr"><is><t>' + escapeXml(val) + '</t></is></c>';
+        }
+      }
+      sheetDataRows += '<row r="' + excelRow + '">' + cells + '</row>';
+    }
+
+    let colDefs = '<cols>';
+    for (let c = 0; c < numCols; c++) {
+      let maxLen = 8;
+      for (let r = 0; r < numRows; r++) {
+        const v = (r === 0) ? headers[c] : data[r][c];
+        if (v !== null && v !== undefined) { const l = String(v).length; if (l > maxLen) maxLen = l; }
+      }
+      colDefs += '<col min="' + (c+1) + '" max="' + (c+1) + '" width="' + Math.min(maxLen+2,60) + '" bestFit="1" customWidth="1"/>';
+    }
+    colDefs += '</cols>';
+
+    const sheetXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+      + '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"'
+      + ' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+      + colDefs + '<sheetData>' + sheetDataRows + '</sheetData>'
+      + '<tableParts count="1"><tablePart r:id="rId1"/></tableParts></worksheet>';
+
+    let tableCols = '';
+    for (let c = 0; c < numCols; c++) {
+      tableCols += '<tableColumn id="' + (c+1) + '" name="' + escapeXml(headers[c]) + '"/>';
+    }
+
+    const tableXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+      + '<table xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"'
+      + ' id="1" name="CleanedData" displayName="CleanedData" ref="' + tableRef + '" headerRowCount="1">'
+      + '<autoFilter ref="' + tableRef + '"/>'
+      + '<tableColumns count="' + numCols + '">' + tableCols + '</tableColumns>'
+      + '<tableStyleInfo name="TableStyleLight1" showFirstColumn="0" showLastColumn="0" showRowStripes="1" showColumnStripes="0"/>'
+      + '</table>';
+
+    const sheetRelsXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+      + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+      + '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/table" Target="../tables/table1.xml"/>'
+      + '</Relationships>';
+
+    const workbookXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+      + '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"'
+      + ' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+      + '<sheets><sheet name="Sheet1" sheetId="1" r:id="rId1"/></sheets></workbook>';
+
+    const workbookRelsXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+      + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+      + '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>'
+      + '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'
+      + '</Relationships>';
+
+    const contentTypesXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+      + '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+      + '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+      + '<Default Extension="xml" ContentType="application/xml"/>'
+      + '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
+      + '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
+      + '<Override PartName="/xl/tables/table1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.table+xml"/>'
+      + '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
+      + '</Types>';
+
+    const relsXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+      + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+      + '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>'
+      + '</Relationships>';
+
+    const zip = new JSZip();
+    zip.file('[Content_Types].xml', contentTypesXml);
+    zip.file('_rels/.rels', relsXml);
+    zip.file('xl/workbook.xml', workbookXml);
+    zip.file('xl/_rels/workbook.xml.rels', workbookRelsXml);
+    zip.file('xl/styles.xml', stylesXml);
+    zip.file('xl/worksheets/sheet1.xml', sheetXml);
+    zip.file('xl/worksheets/_rels/sheet1.xml.rels', sheetRelsXml);
+    zip.file('xl/tables/table1.xml', tableXml);
+
+    zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+      .then(function(blob) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = outputFilename; a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      });
+  }
+
+  function downloadFile() {
+    const selected = new Set(getSelectedOptions());
+    if (selected.size === 0) return;
+    const headerRow = cleanedData[0];
+
+    // Only drop the Custom Fields column (used for filtering UI only).
+    // Staff Trainer is intentionally kept in the output.
+    const dropCols = new Set();
+    if (customFieldColIndex !== -1) dropCols.add(customFieldColIndex);
+
+    const finalData = [];
+    finalData.push(headerRow.filter((_, i) => !dropCols.has(i)));
+    for (let r = 1; r < cleanedData.length; r++) {
+      const row = cleanedData[r];
+      const cfVal = (row[customFieldColIndex] !== null && row[customFieldColIndex] !== undefined)
+        ? String(row[customFieldColIndex]).trim() : '(blank)';
+      if (selected.has(cfVal)) finalData.push(row.filter((_, i) => !dropCols.has(i)));
+    }
+    if (finalData.length <= 1) { showError('No rows matched the selected filters.'); return; }
+    buildXlsx(finalData);
+  }
+
+  function showStatus(filename, stats) {
+    document.getElementById('s-filename').textContent = filename;
+    document.getElementById('s-rows').textContent = stats.rows + ' data rows';
+    document.getElementById('status-area').style.display = 'block';
+  }
+
+  function showError(msg) {
+    const el = document.getElementById('error-msg');
+    el.textContent = msg; el.style.display = 'block';
+  }
+
+  function resetTool() {
+    cleanedData = []; customFieldColIndex = -1;
+    document.getElementById('status-area').style.display = 'none';
+    document.getElementById('filter-area').style.display = 'none';
+    document.getElementById('error-msg').style.display = 'none';
+    document.getElementById('file-input').value = '';
+    document.getElementById('filter-options').innerHTML = '';
+  }
 </script>
 </body>
 </html>
