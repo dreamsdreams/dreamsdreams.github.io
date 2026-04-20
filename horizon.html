@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Horizon Sonifier</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,400;1,400&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0c0f;
+    --surface: #13161b;
+    --surface2: #1c2028;
+    --border: rgba(255,255,255,0.08);
+    --accent: #7eb8c9;
+    --accent2: #c97eb8;
+    --text: #e8eaed;
+    --muted: #6b7280;
+    --line-color: #7eb8c9;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem 1rem 4rem;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+  }
+
+  h1 {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    font-size: 2.4rem;
+    font-weight: 400;
+    color: var(--text);
+    letter-spacing: -0.02em;
+    margin-bottom: 0.4rem;
+  }
+
+  .subtitle {
+    font-size: 0.72rem;
+    color: var(--muted);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    width: 100%;
+    max-width: 800px;
+    overflow: hidden;
+  }
+
+  .upload-zone {
+    padding: 3rem 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    cursor: pointer;
+    border: 2px dashed var(--border);
+    border-radius: 14px;
+    margin: 1.5rem;
+    transition: border-color 0.2s, background 0.2s;
+  }
+
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: var(--accent);
+    background: rgba(126,184,201,0.04);
+  }
+
+  .upload-icon {
+    width: 48px;
+    height: 48px;
+    opacity: 0.4;
+  }
+
+  .upload-label {
+    font-size: 0.85rem;
+    color: var(--muted);
+    text-align: center;
+    line-height: 1.6;
+  }
+
+  .upload-label span {
+    color: var(--accent);
+    cursor: pointer;
+  }
+
+  #fileInput { display: none; }
+
+  .canvas-wrap {
+    position: relative;
+    width: 100%;
+    display: none;
+  }
+
+  #imgCanvas {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-height: 420px;
+    object-fit: contain;
+  }
+
+  #overlayCanvas {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+
+  .scanner-line {
+    position: absolute;
+    top: 0;
+    width: 2px;
+    height: 100%;
+    background: rgba(201,126,184,0.7);
+    pointer-events: none;
+    display: none;
+    transform: translateX(-50%);
+    box-shadow: 0 0 8px rgba(201,126,184,0.5);
+  }
+
+  .controls {
+    padding: 1.25rem 1.5rem;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .btn {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    letter-spacing: 0.06em;
+    padding: 0.6rem 1.4rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: all 0.15s;
+    background: var(--surface2);
+    color: var(--text);
+  }
+
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .btn.primary {
+    background: var(--accent);
+    color: #0a0c0f;
+    border-color: var(--accent);
+    font-weight: 500;
+  }
+
+  .btn.primary:hover { background: #a0d4e6; border-color: #a0d4e6; }
+  .btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  .params {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    padding: 0 1.5rem 1.25rem;
+    border-top: 1px solid var(--border);
+    padding-top: 1rem;
+  }
+
+  .param-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    flex: 1;
+    min-width: 140px;
+  }
+
+  label {
+    font-size: 0.7rem;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  input[type=range] {
+    width: 100%;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+
+  .param-val {
+    font-size: 0.78rem;
+    color: var(--accent);
+  }
+
+  select {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.35rem 0.5rem;
+    cursor: pointer;
+  }
+
+  .status {
+    font-size: 0.72rem;
+    color: var(--muted);
+    padding: 0 1.5rem 1rem;
+    letter-spacing: 0.04em;
+  }
+
+  .new-btn { margin: 1.5rem; margin-top: 0; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Horizon Sonifier</h1>
+  <p class="subtitle">trace the skyline · hear the landscape</p>
+</header>
+
+<div class="card">
+  <div class="upload-zone" id="dropZone">
+    <svg class="upload-icon" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="6" y="10" width="36" height="28" rx="3" stroke="#7eb8c9" stroke-width="2" fill="none"/>
+      <circle cx="18" cy="20" r="4" stroke="#7eb8c9" stroke-width="1.5" fill="none"/>
+      <path d="M6 34l10-10 6 6 8-10 12 12" stroke="#7eb8c9" stroke-width="1.5" fill="none" stroke-linejoin="round"/>
+    </svg>
+    <p class="upload-label">Drop a horizon photo here, or <span id="browseLink">browse</span></p>
+    <p class="upload-label" style="font-size:0.68rem">Works best with sky/land or sky/sea images</p>
+    <input type="file" id="fileInput" accept="image/*">
+  </div>
+
+  <div class="canvas-wrap" id="canvasWrap">
+    <canvas id="imgCanvas"></canvas>
+    <canvas id="overlayCanvas"></canvas>
+    <div class="scanner-line" id="scannerLine"></div>
+  </div>
+
+  <div class="params" id="paramsSection" style="display:none">
+    <div class="param-group">
+      <label>Duration <span class="param-val" id="durVal">8s</span></label>
+      <input type="range" id="durSlider" min="2" max="30" value="8">
+    </div>
+    <div class="param-group">
+      <label>Low note <span class="param-val" id="lowVal">C3</span></label>
+      <input type="range" id="lowSlider" min="36" max="72" value="48">
+    </div>
+    <div class="param-group">
+      <label>High note <span class="param-val" id="highVal">C6</span></label>
+      <input type="range" id="highSlider" min="48" max="108" value="84">
+    </div>
+    <div class="param-group">
+      <label>Waveform</label>
+      <select id="waveSelect">
+        <option value="sine">Sine</option>
+        <option value="triangle">Triangle</option>
+        <option value="sawtooth">Sawtooth</option>
+        <option value="square">Square</option>
+      </select>
+    </div>
+    <div class="param-group">
+      <label>Smoothing</label>
+      <select id="smoothSelect">
+        <option value="5">Light</option>
+        <option value="15" selected>Medium</option>
+        <option value="40">Heavy</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="controls" id="controlsSection" style="display:none">
+    <button class="btn primary" id="playBtn">▶ Play</button>
+    <button class="btn" id="stopBtn" disabled>■ Stop</button>
+    <button class="btn" id="retraceBtn">↺ Retrace</button>
+  </div>
+
+  <p class="status" id="status"></p>
+
+  <div style="display:none" id="newWrap">
+    <button class="btn new-btn" id="newBtn">+ New image</button>
+  </div>
+</div>
+
+<script>
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+const browseLink = document.getElementById('browseLink');
+const canvasWrap = document.getElementById('canvasWrap');
+const imgCanvas = document.getElementById('imgCanvas');
+const overlayCanvas = document.getElementById('overlayCanvas');
+const scannerLine = document.getElementById('scannerLine');
+const paramsSection = document.getElementById('paramsSection');
+const controlsSection = document.getElementById('controlsSection');
+const playBtn = document.getElementById('playBtn');
+const stopBtn = document.getElementById('stopBtn');
+const retraceBtn = document.getElementById('retraceBtn');
+const newBtn = document.getElementById('newBtn');
+const newWrap = document.getElementById('newWrap');
+const statusEl = document.getElementById('status');
+
+const durSlider = document.getElementById('durSlider');
+const lowSlider = document.getElementById('lowSlider');
+const highSlider = document.getElementById('highSlider');
+const durVal = document.getElementById('durVal');
+const lowVal = document.getElementById('lowVal');
+const highVal = document.getElementById('highVal');
+const waveSelect = document.getElementById('waveSelect');
+const smoothSelect = document.getElementById('smoothSelect');
+
+let horizonPoints = [];
+let imgData = null;
+let audioCtx = null;
+let activeNodes = [];
+let isPlaying = false;
+let animFrame = null;
+let playStartTime = 0;
+let playDuration = 8;
+let displayW = 0, displayH = 0;
+let naturalW = 0, naturalH = 0;
+
+const NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+function midiToName(m) { return NOTE_NAMES[m % 12] + Math.floor(m/12 - 1); }
+function midiToHz(m) { return 440 * Math.pow(2, (m - 69) / 12); }
+
+durSlider.addEventListener('input', () => { durVal.textContent = durSlider.value + 's'; });
+lowSlider.addEventListener('input', () => { lowVal.textContent = midiToName(+lowSlider.value); });
+highSlider.addEventListener('input', () => { highVal.textContent = midiToName(+highSlider.value); });
+
+browseLink.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', e => { if (e.target.files[0]) loadImage(e.target.files[0]); });
+
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('drag-over');
+  if (e.dataTransfer.files[0]) loadImage(e.dataTransfer.files[0]);
+});
+
+function loadImage(file) {
+  const url = URL.createObjectURL(file);
+  const img = new Image();
+  img.onload = () => {
+    naturalW = img.naturalWidth;
+    naturalH = img.naturalHeight;
+    imgCanvas.width = naturalW;
+    imgCanvas.height = naturalH;
+    const ctx = imgCanvas.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+    imgData = ctx.getImageData(0, 0, naturalW, naturalH);
+
+    dropZone.style.display = 'none';
+    canvasWrap.style.display = 'block';
+    paramsSection.style.display = 'flex';
+    controlsSection.style.display = 'flex';
+    newWrap.style.display = 'block';
+
+    overlayCanvas.width = naturalW;
+    overlayCanvas.height = naturalH;
+
+    traceHorizon();
+    URL.revokeObjectURL(url);
+  };
+  img.src = url;
+}
+
+function traceHorizon() {
+  if (!imgData) return;
+  const smoothing = parseInt(smoothSelect.value);
+  statusEl.textContent = 'Tracing horizon...';
+
+  const w = naturalW, h = naturalH;
+  const data = imgData.data;
+  const rawPoints = [];
+
+  for (let x = 0; x < w; x++) {
+    let bestY = 0;
+    let maxContrast = 0;
+
+    for (let y = 1; y < h - 1; y++) {
+      const idx = (y * w + x) * 4;
+      const idxAbove = ((y - 2) * w + x) * 4;
+      const idxBelow = ((y + 2) * w + x) * 4;
+
+      const rA = data[idxAbove], gA = data[idxAbove+1], bA = data[idxAbove+2];
+      const rB = data[idxBelow], gB = data[idxBelow+1], bB = data[idxBelow+2];
+
+      const lumAbove = 0.299*rA + 0.587*gA + 0.114*bA;
+      const lumBelow = 0.299*rB + 0.587*gB + 0.114*bB;
+
+      const satA = Math.max(rA,gA,bA) - Math.min(rA,gA,bA);
+      const satB = Math.max(rB,gB,bB) - Math.min(rB,gB,bB);
+
+      const lumContrast = Math.abs(lumAbove - lumBelow);
+      const satContrast = Math.abs(satA - satB);
+      const blueA = bA - (rA + gA) / 2;
+      const blueB = bB - (rB + gB) / 2;
+      const blueContrast = Math.abs(blueA - blueB);
+
+      const score = lumContrast * 0.5 + satContrast * 0.3 + blueContrast * 0.2;
+
+      if (score > maxContrast) {
+        maxContrast = score;
+        bestY = y;
+      }
+    }
+    rawPoints.push(bestY);
+  }
+
+  const smoothed = [];
+  for (let x = 0; x < w; x++) {
+    let sum = 0, count = 0;
+    for (let dx = -smoothing; dx <= smoothing; dx++) {
+      const nx = x + dx;
+      if (nx >= 0 && nx < w) { sum += rawPoints[nx]; count++; }
+    }
+    smoothed.push(sum / count);
+  }
+
+  horizonPoints = smoothed;
+  drawOverlay();
+  statusEl.textContent = 'Horizon traced. Press Play to sonify.';
+}
+
+function drawOverlay(scanX = null) {
+  const ctx = overlayCanvas.getContext('2d');
+  ctx.clearRect(0, 0, naturalW, naturalH);
+
+  if (horizonPoints.length === 0) return;
+
+  ctx.beginPath();
+  ctx.moveTo(0, horizonPoints[0]);
+  for (let x = 1; x < horizonPoints.length; x++) {
+    ctx.lineTo(x, horizonPoints[x]);
+  }
+  ctx.strokeStyle = '#7eb8c9';
+  ctx.lineWidth = Math.max(1.5, naturalW / 800);
+  ctx.shadowColor = '#7eb8c9';
+  ctx.shadowBlur = 6;
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  if (scanX !== null) {
+    const yi = Math.round(scanX);
+    const y = yi < horizonPoints.length ? horizonPoints[yi] : naturalH / 2;
+    ctx.beginPath();
+    ctx.arc(scanX, y, Math.max(5, naturalW / 160), 0, Math.PI * 2);
+    ctx.fillStyle = '#c97eb8';
+    ctx.shadowColor = '#c97eb8';
+    ctx.shadowBlur = 12;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+}
+
+retraceBtn.addEventListener('click', () => {
+  stopSound();
+  traceHorizon();
+});
+
+playBtn.addEventListener('click', () => {
+  if (horizonPoints.length === 0) return;
+  startSound();
+});
+
+stopBtn.addEventListener('click', stopSound);
+
+newBtn.addEventListener('click', () => {
+  stopSound();
+  horizonPoints = [];
+  imgData = null;
+  dropZone.style.display = 'flex';
+  canvasWrap.style.display = 'none';
+  paramsSection.style.display = 'none';
+  controlsSection.style.display = 'none';
+  newWrap.style.display = 'none';
+  statusEl.textContent = '';
+  fileInput.value = '';
+  const ctx = overlayCanvas.getContext('2d');
+  ctx.clearRect(0, 0, naturalW, naturalH);
+});
+
+function startSound() {
+  stopSound();
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+
+  playDuration = parseInt(durSlider.value);
+  const lowHz = midiToHz(parseInt(lowSlider.value));
+  const highHz = midiToHz(parseInt(highSlider.value));
+  const waveType = waveSelect.value;
+  const pts = horizonPoints;
+  const numPts = pts.length;
+  const yMin = Math.min(...pts);
+  const yMax = Math.max(...pts);
+
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  const masterGain = audioCtx.createGain();
+
+  osc.type = waveType;
+  osc.connect(gain);
+  gain.connect(masterGain);
+  masterGain.connect(audioCtx.destination);
+
+  masterGain.gain.setValueAtTime(0.25, audioCtx.currentTime);
+
+  const startT = audioCtx.currentTime + 0.05;
+  gain.gain.setValueAtTime(0, startT);
+  gain.gain.linearRampToValueAtTime(1, startT + 0.15);
+
+  const steps = Math.min(numPts, 2000);
+  for (let i = 0; i < steps; i++) {
+    const t = startT + (i / steps) * playDuration;
+    const ptIdx = Math.floor((i / steps) * numPts);
+    const y = pts[ptIdx];
+    const norm = yMax === yMin ? 0.5 : 1 - (y - yMin) / (yMax - yMin);
+    const hz = lowHz + norm * (highHz - lowHz);
+    osc.frequency.setValueAtTime(hz, t);
+  }
+
+  gain.gain.setValueAtTime(1, startT + playDuration - 0.2);
+  gain.gain.linearRampToValueAtTime(0, startT + playDuration);
+
+  osc.start(startT);
+  osc.stop(startT + playDuration + 0.05);
+  osc.onended = () => { if (isPlaying) stopSound(true); };
+
+  activeNodes = [osc, gain, masterGain];
+  isPlaying = true;
+  playStartTime = performance.now();
+  playBtn.disabled = true;
+  stopBtn.disabled = false;
+  statusEl.textContent = 'Playing...';
+
+  scannerLine.style.display = 'block';
+  animateScan();
+}
+
+function animateScan() {
+  if (!isPlaying) return;
+  const elapsed = (performance.now() - playStartTime) / 1000;
+  const progress = Math.min(elapsed / playDuration, 1);
+
+  const rect = imgCanvas.getBoundingClientRect();
+  const displayedW = rect.width;
+  const xPx = progress * displayedW;
+  scannerLine.style.left = xPx + 'px';
+
+  const xNatural = Math.floor(progress * naturalW);
+  drawOverlay(xNatural);
+
+  if (progress < 1) {
+    animFrame = requestAnimationFrame(animateScan);
+  } else {
+    stopSound(true);
+  }
+}
+
+function stopSound(natural = false) {
+  if (animFrame) { cancelAnimationFrame(animFrame); animFrame = null; }
+  scannerLine.style.display = 'none';
+  activeNodes.forEach(n => { try { n.disconnect(); } catch(e){} });
+  activeNodes = [];
+  isPlaying = false;
+  playBtn.disabled = false;
+  stopBtn.disabled = true;
+  if (!natural) drawOverlay();
+  statusEl.textContent = natural ? 'Done. Play again or try a new image.' : 'Stopped.';
+}
+</script>
+</body>
+</html>
