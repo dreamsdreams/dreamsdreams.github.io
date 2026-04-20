@@ -1,282 +1,798 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>3D Room Scene</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3D Room</title>
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{background:#0a0812;display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:system-ui,sans-serif}
-#room-wrap{width:100vw;height:100vh;position:relative;overflow:hidden;background:#0d0b14;cursor:none}
-#scene{width:100%;height:100%;perspective:550px;perspective-origin:50% 48%}
-#world{width:100%;height:100%;transform-style:preserve-3d;position:relative;transform:rotateX(0) rotateY(0)}
-.room-plane{position:absolute;transform-style:preserve-3d;pointer-events:none}
-.shape-wrap{position:absolute;transform-style:preserve-3d;cursor:pointer}
-.shape-inner{transform-style:preserve-3d;transition:transform 0.38s cubic-bezier(0.34,1.56,0.64,1)}
-.shape-wrap:hover .shape-inner{transform:scale(1.5) !important}
-.face{position:absolute;transform-style:preserve-3d}
-#cursor{position:absolute;width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,0.55);pointer-events:none;transform:translate(-50%,-50%);z-index:99;opacity:0;transition:opacity 0.2s}
-.pop-particle{position:absolute;border-radius:50%;pointer-events:none;animation:pop-out 0.6s ease-out forwards;z-index:50}
-@keyframes pop-out{
-  0%{transform:translate(-50%,-50%) scale(1.2);opacity:1}
-  100%{transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) scale(0);opacity:0}
-}
-.shape-label{position:absolute;bottom:-24px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:11px;color:rgba(255,255,255,0.3);letter-spacing:0.07em;pointer-events:none;transition:color 0.2s}
-.shape-wrap:hover .shape-label{color:rgba(255,255,255,0.75)}
-#controls{position:absolute;top:14px;right:14px;z-index:20;display:flex;flex-direction:column;gap:6px}
-.ctrl-btn{background:rgba(255,255,255,0.07);border:0.5px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.6);font-size:11px;padding:5px 12px;border-radius:20px;cursor:pointer;transition:background 0.15s;white-space:nowrap}
-.ctrl-btn:hover{background:rgba(255,255,255,0.13);color:rgba(255,255,255,0.9)}
-#edit-panel{position:absolute;top:14px;left:14px;background:rgba(8,6,20,0.92);border:0.5px solid rgba(255,255,255,0.12);border-radius:10px;padding:12px 14px;z-index:20;min-width:160px;display:none}
-#edit-panel h3{color:rgba(255,255,255,0.4);font-size:10px;font-weight:500;margin:0 0 10px;text-transform:uppercase;letter-spacing:0.1em}
-#edit-panel label{color:rgba(255,255,255,0.4);font-size:11px;display:block;margin:7px 0 2px}
-#edit-panel select,#edit-panel input[type=color]{width:100%;background:rgba(255,255,255,0.07);border:0.5px solid rgba(255,255,255,0.18);color:rgba(255,255,255,0.8);border-radius:6px;padding:4px 7px;font-size:11px;cursor:pointer}
-#edit-panel input[type=color]{height:28px;padding:2px 4px}
-#edit-panel input[type=range]{width:100%;accent-color:#a78bfa}
-.close-x{float:right;background:none;border:none;color:rgba(255,255,255,0.3);font-size:15px;cursor:pointer;line-height:1;margin-top:-2px}
-#add-shape-btn{width:100%;margin-top:9px;background:rgba(167,139,250,0.2);border:0.5px solid rgba(167,139,250,0.4);color:#c4b0ff;font-size:11px;padding:6px;border-radius:7px;cursor:pointer}
-#add-shape-btn:hover{background:rgba(167,139,250,0.35)}
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Playfair+Display:wght@400;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0a0a0f;
+    color: #e8e0d0;
+    font-family: 'DM Mono', monospace;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  #canvas-container {
+    position: fixed;
+    inset: 0;
+    cursor: grab;
+  }
+  #canvas-container:active { cursor: grabbing; }
+
+  canvas { display: block; }
+
+  /* UI Panel */
+  #ui-panel {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    pointer-events: none;
+  }
+
+  .panel-card {
+    background: rgba(10,10,15,0.85);
+    border: 1px solid rgba(232,224,208,0.15);
+    border-radius: 4px;
+    padding: 14px 16px;
+    pointer-events: all;
+    backdrop-filter: blur(12px);
+  }
+
+  .panel-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 18px;
+    letter-spacing: 0.02em;
+    color: #e8e0d0;
+    margin-bottom: 4px;
+  }
+
+  .panel-sub {
+    font-size: 10px;
+    color: rgba(232,224,208,0.4);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  .upload-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(232,224,208,0.08);
+    border: 1px dashed rgba(232,224,208,0.3);
+    border-radius: 3px;
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: rgba(232,224,208,0.7);
+    width: 100%;
+    text-align: left;
+  }
+
+  .upload-btn:hover {
+    background: rgba(232,224,208,0.14);
+    border-color: rgba(232,224,208,0.5);
+    color: #e8e0d0;
+  }
+
+  .upload-btn svg { flex-shrink: 0; }
+
+  #file-input { display: none; }
+
+  /* Object list */
+  #objects-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  .obj-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    background: rgba(232,224,208,0.05);
+    border: 1px solid rgba(232,224,208,0.1);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-size: 10px;
+    color: rgba(232,224,208,0.6);
+    user-select: none;
+  }
+
+  .obj-item:hover, .obj-item.active {
+    background: rgba(232,224,208,0.12);
+    border-color: rgba(232,224,208,0.3);
+    color: #e8e0d0;
+  }
+
+  .obj-thumb {
+    width: 28px;
+    height: 28px;
+    border-radius: 2px;
+    object-fit: cover;
+    border: 1px solid rgba(232,224,208,0.15);
+  }
+
+  .obj-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .obj-del {
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: rgba(255,80,80,0.12);
+    color: rgba(255,120,120,0.6);
+    font-size: 11px;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+  .obj-del:hover { background: rgba(255,80,80,0.3); color: #ff8888; }
+
+  /* Controls hint */
+  #controls-hint {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 20px;
+    z-index: 100;
+  }
+
+  .hint-chip {
+    background: rgba(10,10,15,0.8);
+    border: 1px solid rgba(232,224,208,0.1);
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 10px;
+    color: rgba(232,224,208,0.4);
+    letter-spacing: 0.06em;
+    backdrop-filter: blur(8px);
+    white-space: nowrap;
+  }
+
+  .hint-chip span { color: rgba(232,224,208,0.7); }
+
+  /* Right panel for selected object controls */
+  #obj-controls {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 100;
+    width: 200px;
+    display: none;
+  }
+
+  .ctrl-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+
+  .ctrl-label { font-size: 10px; color: rgba(232,224,208,0.5); letter-spacing: 0.06em; }
+
+  .ctrl-val {
+    font-size: 11px;
+    color: rgba(232,224,208,0.8);
+    min-width: 36px;
+    text-align: right;
+  }
+
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 2px;
+    background: rgba(232,224,208,0.15);
+    border-radius: 1px;
+    outline: none;
+    margin-bottom: 10px;
+    cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #e8e0d0;
+    cursor: pointer;
+  }
+
+  .deselect-btn {
+    width: 100%;
+    padding: 8px;
+    background: rgba(232,224,208,0.06);
+    border: 1px solid rgba(232,224,208,0.15);
+    border-radius: 3px;
+    color: rgba(232,224,208,0.5);
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    cursor: pointer;
+    margin-top: 4px;
+    letter-spacing: 0.06em;
+    transition: all 0.15s;
+  }
+  .deselect-btn:hover { background: rgba(232,224,208,0.12); color: #e8e0d0; }
+
+  /* Toast */
+  #toast {
+    position: fixed;
+    bottom: 60px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: rgba(232,224,208,0.95);
+    color: #0a0a0f;
+    padding: 8px 18px;
+    border-radius: 20px;
+    font-size: 11px;
+    opacity: 0;
+    transition: all 0.3s;
+    pointer-events: none;
+    z-index: 200;
+    letter-spacing: 0.05em;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* Mode indicator */
+  #mode-badge {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(180,140,80,0.2);
+    border: 1px solid rgba(180,140,80,0.4);
+    color: rgba(220,180,100,0.9);
+    padding: 5px 14px;
+    border-radius: 20px;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    display: none;
+    z-index: 100;
+    pointer-events: none;
+  }
 </style>
 </head>
 <body>
-<div id="room-wrap">
-  <div id="cursor"></div>
-  <div id="scene">
-    <div id="world">
-      <div id="room-geo"></div>
-      <div id="shapes-layer"></div>
-    </div>
+
+<div id="canvas-container"></div>
+
+<!-- Left panel -->
+<div id="ui-panel">
+  <div class="panel-card">
+    <div class="panel-title">Room Studio</div>
+    <div class="panel-sub">3D Scene Editor</div>
+    <label class="upload-btn" for="file-input">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      Upload image → place in room
+    </label>
+    <input type="file" id="file-input" accept="image/*">
   </div>
-  <div id="controls">
-    <button class="ctrl-btn" id="add-btn-top">+ add shape</button>
-    <button class="ctrl-btn" id="edit-tog">edit selected</button>
-  </div>
-  <div id="edit-panel">
-    <button class="close-x" id="close-ep">×</button>
-    <h3 id="ep-title">shape</h3>
-    <label>type</label>
-    <select id="ep-type"><option value="cube">cube</option><option value="tetra">tetrahedron</option><option value="ring">ring</option><option value="sphere">sphere</option><option value="star">star prism</option></select>
-    <label>color</label>
-    <input type="color" id="ep-color" value="#7c5fe6"/>
-    <label>size <span id="ep-sz-out">60</span></label>
-    <input type="range" id="ep-size" min="25" max="120" value="60" step="1"/>
-    <label>depth <span id="ep-dz-out">0</span></label>
-    <input type="range" id="ep-dz" min="-280" max="280" value="0" step="1"/>
-    <button id="add-shape-btn">+ add new shape</button>
+
+  <div class="panel-card" id="objects-panel" style="display:none;">
+    <div class="panel-sub" style="margin-bottom:8px;">Placed Objects</div>
+    <div id="objects-list"></div>
   </div>
 </div>
+
+<!-- Right panel: selected object controls -->
+<div id="obj-controls">
+  <div class="panel-card">
+    <div class="panel-sub" style="margin-bottom:10px;">Selected Object</div>
+
+    <div class="ctrl-row">
+      <span class="ctrl-label">SCALE</span>
+      <span class="ctrl-val" id="val-scale">1.0</span>
+    </div>
+    <input type="range" id="ctrl-scale" min="0.1" max="5" step="0.05" value="1">
+
+    <div class="ctrl-row">
+      <span class="ctrl-label">ROTATE Y</span>
+      <span class="ctrl-val" id="val-rotY">0°</span>
+    </div>
+    <input type="range" id="ctrl-rotY" min="-180" max="180" step="1" value="0">
+
+    <div class="ctrl-row">
+      <span class="ctrl-label">HEIGHT</span>
+      <span class="ctrl-val" id="val-posY">0.0</span>
+    </div>
+    <input type="range" id="ctrl-posY" min="0" max="4" step="0.05" value="0">
+
+    <button class="deselect-btn" id="done-btn">✓ Done Placing</button>
+  </div>
+</div>
+
+<div id="mode-badge">Placement Mode — Click Floor to Place</div>
+
+<!-- Controls hint -->
+<div id="controls-hint">
+  <div class="hint-chip"><span>Drag</span> to orbit</div>
+  <div class="hint-chip"><span>Scroll</span> to zoom</div>
+  <div class="hint-chip"><span>Right-drag</span> to pan</div>
+  <div class="hint-chip"><span>Click object</span> to select</div>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
-const wrap=document.getElementById('room-wrap');
-const world=document.getElementById('world');
-const roomGeo=document.getElementById('room-geo');
-const shapesLayer=document.getElementById('shapes-layer');
-const cur=document.getElementById('cursor');
-const ep=document.getElementById('edit-panel');
+// ─── Scene Setup ───────────────────────────────────────────────
+const container = document.getElementById('canvas-container');
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputEncoding = THREE.sRGBEncoding;
+container.appendChild(renderer.domElement);
 
-let mx=0,my=0,selId=null,floatT=0,nextId=6;
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0e0d12);
+scene.fog = new THREE.Fog(0x0e0d12, 20, 40);
 
-const shapes=[
-  {id:1,type:'cube',   x:20,y:38,z:-130,size:60,color:'#7c5fe6',label:'alpha'},
-  {id:2,type:'tetra',  x:52,y:28,z:70,  size:68,color:'#e05b8e',label:'beta'},
-  {id:3,type:'ring',   x:78,y:44,z:-65, size:62,color:'#5bbde0',label:'gamma'},
-  {id:4,type:'sphere', x:34,y:60,z:150, size:74,color:'#5de09a',label:'delta'},
-  {id:5,type:'star',   x:65,y:62,z:-20, size:57,color:'#e09a3a',label:'epsilon'},
-];
+const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.01, 100);
+camera.position.set(0, 3, 8);
+camera.lookAt(0, 1.5, 0);
 
-function hr(hex,a){const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return `rgba(${r},${g},${b},${a})`}
+// ─── Lighting ──────────────────────────────────────────────────
+const ambient = new THREE.AmbientLight(0xfff5e0, 0.4);
+scene.add(ambient);
 
-function buildRoom(){
-  roomGeo.innerHTML='';
-  const planes=[
-    {key:'back', w:'160%',h:'160%',l:'-30%',t:'-30%', style:`transform:translateZ(-330px);background:#12082a;background-image:repeating-linear-gradient(rgba(255,255,255,0.018) 0 0.5px,transparent 0.5px 60px),repeating-linear-gradient(90deg,rgba(255,255,255,0.018) 0 0.5px,transparent 0.5px 60px);background-size:60px 60px`},
-    {key:'floor',w:'160%',h:'160%',l:'-30%',t:'72%',  style:`transform:rotateX(90deg);background:#0c0820;background-image:repeating-linear-gradient(rgba(255,255,255,0.04) 0 0.5px,transparent 0.5px 50px),repeating-linear-gradient(90deg,rgba(255,255,255,0.04) 0 0.5px,transparent 0.5px 50px);background-size:50px 50px`},
-    {key:'ceil', w:'160%',h:'160%',l:'-30%',t:'-32%', style:`transform:rotateX(-90deg);background:#100930`},
-    {key:'left', w:'160%',h:'200%',l:'-32%',t:'-50%', style:`transform:rotateY(90deg);background:#0e0826`},
-    {key:'right',w:'160%',h:'200%',l:'72%', t:'-50%', style:`transform:rotateY(-90deg);background:#0e0826`},
-  ];
-  planes.forEach(p=>{
-    const d=document.createElement('div');
-    d.className='room-plane';
-    d.style.cssText=`width:${p.w};height:${p.h};left:${p.l};top:${p.t};border:0.5px solid rgba(255,255,255,0.04);${p.style}`;
-    roomGeo.appendChild(d);
+const ceiling_light = new THREE.PointLight(0xfff0d0, 1.8, 18);
+ceiling_light.position.set(0, 4.8, 0);
+ceiling_light.castShadow = true;
+ceiling_light.shadow.mapSize.width = 1024;
+ceiling_light.shadow.mapSize.height = 1024;
+scene.add(ceiling_light);
+
+// Subtle rim lights
+const rimL = new THREE.PointLight(0x6080ff, 0.3, 12);
+rimL.position.set(-5, 2, -4);
+scene.add(rimL);
+const rimR = new THREE.PointLight(0xff8040, 0.2, 12);
+rimR.position.set(5, 2, -4);
+scene.add(rimR);
+
+// Light bulb visible
+const bulbGeo = new THREE.SphereGeometry(0.08, 8, 8);
+const bulbMat = new THREE.MeshStandardMaterial({ color: 0xfffbe0, emissive: 0xfffbe0, emissiveIntensity: 3 });
+const bulb = new THREE.Mesh(bulbGeo, bulbMat);
+bulb.position.copy(ceiling_light.position);
+scene.add(bulb);
+
+// Pendant wire
+const wireGeo = new THREE.CylinderGeometry(0.005, 0.005, 0.4, 6);
+const wireMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
+const wire = new THREE.Mesh(wireGeo, wireMat);
+wire.position.set(0, 5.15, 0);
+scene.add(wire);
+
+// ─── Room Geometry ─────────────────────────────────────────────
+const ROOM_W = 12, ROOM_H = 5.5, ROOM_D = 12;
+
+function makeMaterial(color, roughness = 0.85, metalness = 0) {
+  return new THREE.MeshStandardMaterial({ color, roughness, metalness, side: THREE.BackSide });
+}
+
+// Floor
+const floorGeo = new THREE.PlaneGeometry(ROOM_W, ROOM_D, 20, 20);
+const floorMat = new THREE.MeshStandardMaterial({
+  color: 0x2a1f14,
+  roughness: 0.4,
+  metalness: 0.05,
+});
+const floor = new THREE.Mesh(floorGeo, floorMat);
+floor.rotation.x = -Math.PI / 2;
+floor.receiveShadow = true;
+floor.name = 'floor';
+scene.add(floor);
+
+// Floor planks via grid
+const gridHelper = new THREE.GridHelper(ROOM_W, 12, 0x4a3020, 0x3a2518);
+gridHelper.position.y = 0.001;
+scene.add(gridHelper);
+
+// Room shell (walls + ceiling via BackSide box)
+const roomGeo = new THREE.BoxGeometry(ROOM_W, ROOM_H, ROOM_D);
+const wallMat = new THREE.MeshStandardMaterial({ color: 0xddd5c0, roughness: 0.9, side: THREE.BackSide });
+const ceilMat = new THREE.MeshStandardMaterial({ color: 0xe8e0d0, roughness: 0.95, side: THREE.BackSide });
+
+// Use groups to have different materials per face
+const mats = [wallMat, wallMat, ceilMat, floorMat, wallMat, wallMat];
+const room = new THREE.Mesh(roomGeo, mats);
+room.position.y = ROOM_H / 2;
+room.receiveShadow = true;
+scene.add(room);
+
+// Baseboard trim
+function addBaseboard(w, d, px, pz, ry) {
+  const geo = new THREE.BoxGeometry(w, 0.12, 0.06);
+  const mat = new THREE.MeshStandardMaterial({ color: 0xf0ece0, roughness: 0.5 });
+  const m = new THREE.Mesh(geo, mat);
+  m.position.set(px, 0.06, pz);
+  m.rotation.y = ry;
+  scene.add(m);
+}
+addBaseboard(ROOM_W, 0, 0, -ROOM_D/2+0.03, 0);
+addBaseboard(ROOM_W, 0, 0, ROOM_D/2-0.03, 0);
+addBaseboard(ROOM_D, 0, -ROOM_W/2+0.03, 0, Math.PI/2);
+addBaseboard(ROOM_D, 0, ROOM_W/2-0.03, 0, Math.PI/2);
+
+// Crown molding
+function addCrown(w, px, pz, ry) {
+  const geo = new THREE.BoxGeometry(w, 0.1, 0.08);
+  const mat = new THREE.MeshStandardMaterial({ color: 0xf8f4ee, roughness: 0.4 });
+  const m = new THREE.Mesh(geo, mat);
+  m.position.set(px, ROOM_H - 0.05, pz);
+  m.rotation.y = ry;
+  scene.add(m);
+}
+addCrown(ROOM_W, 0, -ROOM_D/2+0.04, 0);
+addCrown(ROOM_W, 0, ROOM_D/2-0.04, 0);
+addCrown(ROOM_D, -ROOM_W/2+0.04, 0, Math.PI/2);
+addCrown(ROOM_D, ROOM_W/2-0.04, 0, Math.PI/2);
+
+// Window on back wall
+function makeWindow(x, y, z) {
+  const frameGeo = new THREE.BoxGeometry(1.8, 2.2, 0.1);
+  const frameMat = new THREE.MeshStandardMaterial({ color: 0xf0ece0, roughness: 0.3 });
+  const frame = new THREE.Mesh(frameGeo, frameMat);
+  frame.position.set(x, y, z);
+  scene.add(frame);
+
+  const glassGeo = new THREE.PlaneGeometry(1.5, 1.9);
+  const glassMat = new THREE.MeshStandardMaterial({
+    color: 0x88aacc, transparent: true, opacity: 0.18,
+    roughness: 0.05, metalness: 0.1, side: THREE.DoubleSide
   });
+  const glass = new THREE.Mesh(glassGeo, glassMat);
+  glass.position.set(x, y, z + 0.01);
+  scene.add(glass);
+
+  // Window light glow
+  const wLight = new THREE.RectAreaLight(0xbbd8ff, 1.5, 1.5, 1.9);
+  wLight.position.set(x, y, z + 0.2);
+  wLight.lookAt(x, y, z + 2);
+  scene.add(wLight);
 }
+makeWindow(-2, 2.5, -ROOM_D/2 + 0.15);
+makeWindow(2, 2.5, -ROOM_D/2 + 0.15);
 
-function makeCubeFaces(s,color){
-  const brightness=[0.22,0.1,0.17,0.09,0.28,0.06];
-  return [{w:s,h:s,tx:0,ty:0,tz:s/2,rx:0,ry:0},{w:s,h:s,tx:0,ty:0,tz:-s/2,rx:0,ry:180},{w:s,h:s,tx:s/2,ty:0,tz:0,rx:0,ry:90},{w:s,h:s,tx:-s/2,ty:0,tz:0,rx:0,ry:-90},{w:s,h:s,tx:0,ty:-s/2,tz:0,rx:90,ry:0},{w:s,h:s,tx:0,ty:s/2,tz:0,rx:-90,ry:0}]
-  .map((f,i)=>{const d=document.createElement('div');d.className='face';d.style.cssText=`width:${f.w}px;height:${f.h}px;background:${hr(color,brightness[i])};border:1px solid ${hr(color,0.65)};transform:translateX(${f.tx}px) translateY(${f.ty}px) translateZ(${f.tz}px) rotateX(${f.rx}deg) rotateY(${f.ry}deg);`;return d;});
+// ─── Placed Objects ────────────────────────────────────────────
+const placedObjects = [];
+let selectedObj = null;
+let placingObj = null;
+
+// Raycaster for floor click placement
+const raycaster = new THREE.Raycaster();
+const mouse2D = new THREE.Vector2();
+const floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+
+// ─── Camera Orbit Controls ─────────────────────────────────────
+let isOrbiting = false, isPanning = false;
+let prevMouse = { x: 0, y: 0 };
+let spherical = { theta: 0, phi: Math.PI / 3.5, radius: 10 };
+let target = new THREE.Vector3(0, 1.5, 0);
+
+function updateCamera() {
+  const x = target.x + spherical.radius * Math.sin(spherical.phi) * Math.sin(spherical.theta);
+  const y = target.y + spherical.radius * Math.cos(spherical.phi);
+  const z = target.z + spherical.radius * Math.sin(spherical.phi) * Math.cos(spherical.theta);
+  camera.position.set(x, y, z);
+  camera.lookAt(target);
 }
+updateCamera();
 
-function makeTetra(s,color){
-  const el=document.createElement('div');
-  el.style.cssText='position:absolute;transform-style:preserve-3d;';
-  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
-  svg.setAttribute('width',s);svg.setAttribute('height',s);svg.setAttribute('viewBox',`0 0 ${s} ${s}`);
-  svg.style.cssText=`position:absolute;left:${-s/2}px;top:${-s/2}px;`;
-  [[[s/2,2],[s-2,s-2],[2,s-2]],[[s/2,2],[s-2,s-2],[s/2,s/2]],[[s/2,2],[2,s-2],[s/2,s/2]]].forEach((pts,i)=>{
-    const poly=document.createElementNS('http://www.w3.org/2000/svg','polygon');
-    poly.setAttribute('points',pts.map(p=>p.join(',')).join(' '));
-    poly.setAttribute('fill',hr(color,[0.32,0.2,0.12][i]));
-    poly.setAttribute('stroke',hr(color,0.85));poly.setAttribute('stroke-width','1.2');poly.setAttribute('stroke-linejoin','round');
-    svg.appendChild(poly);
-  });
-  el.appendChild(svg);return [el];
-}
+container.addEventListener('mousedown', e => {
+  if (e.button === 0) {
+    if (placingObj) {
+      // Place object on click
+      handleFloorClick(e);
+      return;
+    }
+    isOrbiting = true;
+  }
+  if (e.button === 2) isPanning = true;
+  prevMouse = { x: e.clientX, y: e.clientY };
+});
 
-function makeRing(s,color){
-  return Array.from({length:14},(_,i)=>{
-    const ang=(i/14)*360;const d=document.createElement('div');d.className='face';
-    d.style.cssText=`width:${s*0.14}px;height:${s*0.14}px;border-radius:50%;background:${hr(color,0.85)};transform:rotateY(${ang}deg) translateX(${s*0.48}px);`;
-    return d;
-  });
-}
+container.addEventListener('contextmenu', e => e.preventDefault());
 
-function makeSphere(s,color){
-  const els=[];
-  [[1,0,0],[0.87,25,0],[0.87,-25,0],[0.5,55,0],[0.5,-55,0],[0.87,0,25],[0.87,0,-25],[0.5,0,55],[0.5,0,-55]].forEach(([sc,ry,rx])=>{
-    const r=s*sc*0.5;const d=document.createElement('div');d.className='face';
-    d.style.cssText=`width:${r*2}px;height:${r*2}px;left:${-r}px;top:${-r}px;border-radius:50%;border:1.2px solid ${hr(color,0.55)};transform:rotateY(${ry}deg) rotateX(${rx}deg);`;
-    els.push(d);
-  });
-  const core=document.createElement('div');
-  core.style.cssText=`position:absolute;width:${s*0.28}px;height:${s*0.28}px;left:${-s*0.14}px;top:${-s*0.14}px;border-radius:50%;background:${hr(color,0.5)};`;
-  els.push(core);return els;
-}
+window.addEventListener('mouseup', e => {
+  isOrbiting = false;
+  isPanning = false;
+});
 
-function makeStar(s,color){
-  const el=document.createElement('div');el.style.cssText='position:absolute;transform-style:preserve-3d;';
-  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
-  svg.setAttribute('width',s);svg.setAttribute('height',s);svg.setAttribute('viewBox',`0 0 ${s} ${s}`);
-  svg.style.cssText=`position:absolute;left:${-s/2}px;top:${-s/2}px;`;
-  const cx=s/2,cy=s/2,r1=s*0.46,r2=s*0.19,pts=5;
-  let path='M';
-  for(let i=0;i<pts*2;i++){const ang=(i*Math.PI/pts)-Math.PI/2;const r=i%2===0?r1:r2;path+=`${cx+r*Math.cos(ang)},${cy+r*Math.sin(ang)} `;}
-  path+='Z';
-  const star=document.createElementNS('http://www.w3.org/2000/svg','path');
-  star.setAttribute('d',path);star.setAttribute('fill',hr(color,0.3));star.setAttribute('stroke',hr(color,0.85));star.setAttribute('stroke-width','1.2');star.setAttribute('stroke-linejoin','round');
-  svg.appendChild(star);el.appendChild(svg);
-  const back=document.createElement('div');back.className='face';
-  back.style.cssText=`width:${s*0.6}px;height:${s*0.6}px;left:${-s*0.3}px;top:${-s*0.3}px;border-radius:50%;background:${hr(color,0.12)};transform:translateZ(-${s*0.18}px);`;
-  return [el,back];
-}
+window.addEventListener('mousemove', e => {
+  const dx = e.clientX - prevMouse.x;
+  const dy = e.clientY - prevMouse.y;
 
-function buildShape(s){
-  const wrapEl=document.createElement('div');
-  wrapEl.className='shape-wrap';wrapEl.dataset.id=s.id;
-  wrapEl.style.cssText=`left:${s.x}%;top:${s.y}%;transform:translateZ(${s.z}px);`;
+  if (isOrbiting && !placingObj) {
+    spherical.theta -= dx * 0.005;
+    spherical.phi = Math.max(0.1, Math.min(Math.PI / 2.2, spherical.phi + dy * 0.005));
+    updateCamera();
+  }
+  if (isPanning) {
+    const panSpeed = 0.01;
+    const right = new THREE.Vector3();
+    camera.getWorldDirection(right);
+    right.crossVectors(camera.up, right.normalize()).normalize();
+    target.addScaledVector(right, dx * panSpeed * spherical.radius * 0.1);
+    target.y -= dy * panSpeed * spherical.radius * 0.1;
+    target.y = Math.max(0.1, Math.min(ROOM_H - 0.5, target.y));
+    updateCamera();
+  }
 
-  const inner=document.createElement('div');
-  inner.className='shape-inner';inner.style.cssText='position:absolute;transform-style:preserve-3d;';
+  // Move placing object along floor
+  if (placingObj) {
+    mouse2D.x = (e.clientX / window.innerWidth) * 2 - 1;
+    mouse2D.y = -(e.clientY / window.innerHeight) * 2 + 1;
+    raycaster.setFromCamera(mouse2D, camera);
+    const pt = new THREE.Vector3();
+    raycaster.ray.intersectPlane(floorPlane, pt);
+    if (pt) {
+      const half = ROOM_W / 2 - 0.5;
+      pt.x = Math.max(-half, Math.min(half, pt.x));
+      pt.z = Math.max(-ROOM_D/2 + 0.5, Math.min(ROOM_D/2 - 0.5, pt.z));
+      placingObj.mesh.position.x = pt.x;
+      placingObj.mesh.position.z = pt.z;
+    }
+  }
 
-  const faceMap={cube:makeCubeFaces,tetra:makeTetra,ring:makeRing,sphere:makeSphere,star:makeStar};
-  const faces=(faceMap[s.type]||makeCubeFaces)(s.size,s.color);
-  faces.forEach(f=>{if(!f.style.position)f.style.position='absolute';inner.appendChild(f);});
+  prevMouse = { x: e.clientX, y: e.clientY };
+});
 
-  const glow=document.createElement('div');
-  const gs=s.size*2;
-  glow.style.cssText=`position:absolute;width:${gs}px;height:${gs}px;left:${-gs/2}px;top:${-gs/2}px;border-radius:50%;background:radial-gradient(circle,${hr(s.color,0.15)} 0%,transparent 70%);pointer-events:none;opacity:0;transition:opacity 0.3s`;
-  inner.appendChild(glow);
+container.addEventListener('wheel', e => {
+  spherical.radius = Math.max(2, Math.min(18, spherical.radius + e.deltaY * 0.01));
+  updateCamera();
+});
 
-  const label=document.createElement('div');
-  label.className='shape-label';label.textContent=s.label;
+// Click to select existing objects
+container.addEventListener('click', e => {
+  if (placingObj) return;
+  mouse2D.x = (e.clientX / window.innerWidth) * 2 - 1;
+  mouse2D.y = -(e.clientY / window.innerHeight) * 2 + 1;
+  raycaster.setFromCamera(mouse2D, camera);
 
-  wrapEl.appendChild(inner);wrapEl.appendChild(label);
-  wrapEl.addEventListener('mouseenter',()=>glow.style.opacity='1');
-  wrapEl.addEventListener('mouseleave',()=>glow.style.opacity='0');
-  wrapEl.addEventListener('click',e=>{e.stopPropagation();spawnPop(s,e);selectShape(s.id);});
-  return wrapEl;
-}
+  const meshes = placedObjects.map(o => o.mesh);
+  const hits = raycaster.intersectObjects(meshes, true);
+  if (hits.length > 0) {
+    let hit = hits[0].object;
+    while (hit.parent && !placedObjects.find(o => o.mesh === hit)) hit = hit.parent;
+    const found = placedObjects.find(o => o.mesh === hit || o.mesh.children.includes(hit));
+    if (found) selectObject(found);
+  } else {
+    deselectObject();
+  }
+});
 
-function spawnPop(s,e){
-  const r=wrap.getBoundingClientRect();
-  const bx=e.clientX-r.left,by=e.clientY-r.top;
-  for(let i=0;i<18;i++){
-    const p=document.createElement('div');
-    p.className='pop-particle';
-    const ang=Math.random()*Math.PI*2,dist=35+Math.random()*70,sz=3+Math.random()*6;
-    p.style.cssText=`width:${sz}px;height:${sz}px;left:${bx}px;top:${by}px;background:${s.color};--dx:${Math.cos(ang)*dist}px;--dy:${Math.sin(ang)*dist}px;`;
-    wrap.appendChild(p);
-    setTimeout(()=>p.remove(),650);
+function handleFloorClick(e) {
+  mouse2D.x = (e.clientX / window.innerWidth) * 2 - 1;
+  mouse2D.y = -(e.clientY / window.innerHeight) * 2 + 1;
+  raycaster.setFromCamera(mouse2D, camera);
+  const pt = new THREE.Vector3();
+  raycaster.ray.intersectPlane(floorPlane, pt);
+  if (pt) {
+    const half = ROOM_W / 2 - 0.5;
+    pt.x = Math.max(-half, Math.min(half, pt.x));
+    pt.z = Math.max(-ROOM_D/2 + 0.5, Math.min(ROOM_D/2 - 0.5, pt.z));
+    placingObj.mesh.position.set(pt.x, placingObj.mesh.position.y, pt.z);
+    confirmPlacement();
   }
 }
 
-function renderAll(){shapesLayer.innerHTML='';shapes.forEach(s=>shapesLayer.appendChild(buildShape(s)));}
+// ─── Image → 3D Model ──────────────────────────────────────────
+document.getElementById('file-input').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  e.target.value = '';
 
-function selectShape(id){
-  selId=id;
-  const s=shapes.find(x=>x.id===id);if(!s)return;
-  document.getElementById('ep-title').textContent=s.label;
-  document.getElementById('ep-type').value=s.type;
-  document.getElementById('ep-color').value=s.color;
-  document.getElementById('ep-size').value=s.size;
-  document.getElementById('ep-sz-out').textContent=s.size;
-  document.getElementById('ep-dz').value=s.z;
-  document.getElementById('ep-dz-out').textContent=s.z;
-  ep.style.display='block';
-}
-
-document.getElementById('close-ep').addEventListener('click',()=>{ep.style.display='none';selId=null;});
-document.getElementById('edit-tog').addEventListener('click',()=>{
-  if(selId) ep.style.display=ep.style.display==='none'?'block':'none';
-  else if(shapes.length) selectShape(shapes[0].id);
-});
-
-function syncSelected(){
-  if(!selId)return;
-  const s=shapes.find(x=>x.id===selId);if(!s)return;
-  s.type=document.getElementById('ep-type').value;
-  s.color=document.getElementById('ep-color').value;
-  s.size=parseInt(document.getElementById('ep-size').value);
-  s.z=parseInt(document.getElementById('ep-dz').value);
-  document.getElementById('ep-sz-out').textContent=s.size;
-  document.getElementById('ep-dz-out').textContent=s.z;
-  renderAll();
-}
-['ep-type','ep-color','ep-size','ep-dz'].forEach(id=>document.getElementById(id).addEventListener('input',syncSelected));
-
-function addShape(){
-  const cols=['#7c5fe6','#e05b8e','#5bbde0','#5de09a','#e09a3a','#de5b5b','#a05be0','#e0d45b'];
-  const types=['cube','tetra','ring','sphere','star'];
-  const ns={
-    id:nextId++,
-    type:types[Math.floor(Math.random()*types.length)],
-    x:12+Math.random()*76,y:18+Math.random()*58,
-    z:Math.round((Math.random()-0.5)*440),
-    size:38+Math.round(Math.random()*68),
-    color:cols[Math.floor(Math.random()*cols.length)],
-    label:`shape ${nextId-1}`
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const img = new Image();
+    img.onload = () => createModelFromImage(img, file.name);
+    img.src = ev.target.result;
   };
-  shapes.push(ns);renderAll();selectShape(ns.id);
-}
-document.getElementById('add-btn-top').addEventListener('click',addShape);
-document.getElementById('add-shape-btn').addEventListener('click',addShape);
-
-wrap.addEventListener('mousemove',e=>{
-  const r=wrap.getBoundingClientRect();
-  mx=((e.clientX-r.left)/r.width-0.5)*2;
-  my=((e.clientY-r.top)/r.height-0.5)*2;
-  cur.style.left=(e.clientX-r.left)+'px';
-  cur.style.top=(e.clientY-r.top)+'px';
+  reader.readAsDataURL(file);
 });
-wrap.addEventListener('mouseleave',()=>{mx=0;my=0;cur.style.opacity='0';});
-wrap.addEventListener('mouseenter',()=>cur.style.opacity='1');
 
-let ctX=0,ctY=0;
-function tick(){
-  floatT+=0.0025;
-  ctX+=(my*-32-ctX)*0.055;
-  ctY+=(mx*42-ctY)*0.055;
-  world.style.transform=`rotateX(${ctX}deg) rotateY(${ctY}deg)`;
-  shapes.forEach((s,i)=>{
-    const el=shapesLayer.querySelector(`[data-id="${s.id}"]`);if(!el)return;
-    const fy=Math.sin(floatT+i*1.3)*13;
-    const spin=(floatT*20+i*58)%360;
-    el.style.transform=`translateZ(${s.z}px) translateY(${fy}px) rotateY(${spin}deg)`;
+function createModelFromImage(img, filename) {
+  // Create texture
+  const texture = new THREE.TextureLoader().load(img.src);
+  texture.encoding = THREE.sRGBEncoding;
+
+  const aspect = img.width / img.height;
+  const h = 1.8; // default height
+  const w = h * aspect;
+
+  // Create a billboard plane (double-sided with the image)
+  const geo = new THREE.PlaneGeometry(w, h);
+  const mat = new THREE.MeshStandardMaterial({
+    map: texture,
+    transparent: true,
+    alphaTest: 0.05,
+    side: THREE.DoubleSide,
+    roughness: 0.6,
   });
-  requestAnimationFrame(tick);
+
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.set(0, h / 2, 0);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+
+  // Add a subtle shadow plane beneath
+  const shadowGeo = new THREE.EllipseGeometry(w * 0.4, 0.15, 16);
+  const shadowMat = new THREE.MeshStandardMaterial({
+    color: 0x000000, transparent: true, opacity: 0.25, roughness: 1,
+  });
+  const shadow = new THREE.Mesh(shadowGeo, shadowMat);
+  shadow.rotation.x = -Math.PI / 2;
+  shadow.position.y = -h / 2 + 0.001;
+  mesh.add(shadow);
+
+  scene.add(mesh);
+
+  const name = filename.replace(/\.[^/.]+$/, '').substring(0, 18);
+  const objData = {
+    mesh, name, thumb: img.src,
+    scale: 1, rotY: 0, posY: 0,
+    baseH: h / 2
+  };
+  placedObjects.push(objData);
+
+  // Enter placement mode
+  placingObj = objData;
+  document.getElementById('mode-badge').style.display = 'block';
+  showToast('Move mouse to position · Click to place');
+  updateObjectsList();
 }
 
-buildRoom();renderAll();tick();
+function confirmPlacement() {
+  placingObj = null;
+  document.getElementById('mode-badge').style.display = 'none';
+  const last = placedObjects[placedObjects.length - 1];
+  selectObject(last);
+  showToast('Placed! Adjust with controls →');
+}
+
+// ─── Selection & Controls ──────────────────────────────────────
+function selectObject(obj) {
+  selectedObj = obj;
+  document.getElementById('obj-controls').style.display = 'block';
+
+  document.getElementById('ctrl-scale').value = obj.scale;
+  document.getElementById('val-scale').textContent = obj.scale.toFixed(2);
+  document.getElementById('ctrl-rotY').value = obj.rotY;
+  document.getElementById('val-rotY').textContent = Math.round(obj.rotY) + '°';
+  document.getElementById('ctrl-posY').value = obj.posY;
+  document.getElementById('val-posY').textContent = obj.posY.toFixed(2);
+
+  updateObjectsList();
+}
+
+function deselectObject() {
+  selectedObj = null;
+  document.getElementById('obj-controls').style.display = 'none';
+  updateObjectsList();
+}
+
+document.getElementById('ctrl-scale').addEventListener('input', function() {
+  if (!selectedObj) return;
+  selectedObj.scale = parseFloat(this.value);
+  selectedObj.mesh.scale.setScalar(selectedObj.scale);
+  document.getElementById('val-scale').textContent = selectedObj.scale.toFixed(2);
+});
+
+document.getElementById('ctrl-rotY').addEventListener('input', function() {
+  if (!selectedObj) return;
+  selectedObj.rotY = parseFloat(this.value);
+  selectedObj.mesh.rotation.y = selectedObj.rotY * Math.PI / 180;
+  document.getElementById('val-rotY').textContent = Math.round(selectedObj.rotY) + '°';
+});
+
+document.getElementById('ctrl-posY').addEventListener('input', function() {
+  if (!selectedObj) return;
+  selectedObj.posY = parseFloat(this.value);
+  selectedObj.mesh.position.y = selectedObj.baseH * selectedObj.scale + selectedObj.posY;
+  document.getElementById('val-posY').textContent = selectedObj.posY.toFixed(2);
+});
+
+document.getElementById('done-btn').addEventListener('click', deselectObject);
+
+// ─── Objects List UI ───────────────────────────────────────────
+function updateObjectsList() {
+  const panel = document.getElementById('objects-panel');
+  const list = document.getElementById('objects-list');
+  list.innerHTML = '';
+
+  if (placedObjects.length === 0) {
+    panel.style.display = 'none';
+    return;
+  }
+  panel.style.display = 'block';
+
+  placedObjects.forEach((obj, i) => {
+    const item = document.createElement('div');
+    item.className = 'obj-item' + (selectedObj === obj ? ' active' : '');
+    item.innerHTML = `
+      <img class="obj-thumb" src="${obj.thumb}">
+      <span class="obj-name">${obj.name}</span>
+      <div class="obj-del" data-i="${i}">✕</div>
+    `;
+    item.addEventListener('click', ev => {
+      if (ev.target.classList.contains('obj-del')) {
+        const idx = parseInt(ev.target.dataset.i);
+        removeObject(idx);
+      } else {
+        selectObject(obj);
+      }
+    });
+    list.appendChild(item);
+  });
+}
+
+function removeObject(idx) {
+  const obj = placedObjects[idx];
+  scene.remove(obj.mesh);
+  placedObjects.splice(idx, 1);
+  if (selectedObj === obj) deselectObject();
+  updateObjectsList();
+}
+
+// ─── Toast ─────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// ─── Resize ────────────────────────────────────────────────────
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ─── Render Loop ───────────────────────────────────────────────
+let t = 0;
+function animate() {
+  requestAnimationFrame(animate);
+  t += 0.01;
+
+  // Subtle light flicker
+  ceiling_light.intensity = 1.8 + Math.sin(t * 0.7) * 0.04;
+
+  // Animate placed objects slightly in placement mode
+  if (placingObj) {
+    placingObj.mesh.rotation.y = Math.sin(t * 1.2) * 0.08;
+  }
+
+  renderer.render(scene, camera);
+}
+animate();
+
+showToast('Upload an image to place it in the room');
 </script>
 </body>
 </html>
