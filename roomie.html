@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>3D Room Scene</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0a0812;display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:system-ui,sans-serif}
+#room-wrap{width:100vw;height:100vh;position:relative;overflow:hidden;background:#0d0b14;cursor:none}
+#scene{width:100%;height:100%;perspective:550px;perspective-origin:50% 48%}
+#world{width:100%;height:100%;transform-style:preserve-3d;position:relative;transform:rotateX(0) rotateY(0)}
+.room-plane{position:absolute;transform-style:preserve-3d;pointer-events:none}
+.shape-wrap{position:absolute;transform-style:preserve-3d;cursor:pointer}
+.shape-inner{transform-style:preserve-3d;transition:transform 0.38s cubic-bezier(0.34,1.56,0.64,1)}
+.shape-wrap:hover .shape-inner{transform:scale(1.5) !important}
+.face{position:absolute;transform-style:preserve-3d}
+#cursor{position:absolute;width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,0.55);pointer-events:none;transform:translate(-50%,-50%);z-index:99;opacity:0;transition:opacity 0.2s}
+.pop-particle{position:absolute;border-radius:50%;pointer-events:none;animation:pop-out 0.6s ease-out forwards;z-index:50}
+@keyframes pop-out{
+  0%{transform:translate(-50%,-50%) scale(1.2);opacity:1}
+  100%{transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) scale(0);opacity:0}
+}
+.shape-label{position:absolute;bottom:-24px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:11px;color:rgba(255,255,255,0.3);letter-spacing:0.07em;pointer-events:none;transition:color 0.2s}
+.shape-wrap:hover .shape-label{color:rgba(255,255,255,0.75)}
+#controls{position:absolute;top:14px;right:14px;z-index:20;display:flex;flex-direction:column;gap:6px}
+.ctrl-btn{background:rgba(255,255,255,0.07);border:0.5px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.6);font-size:11px;padding:5px 12px;border-radius:20px;cursor:pointer;transition:background 0.15s;white-space:nowrap}
+.ctrl-btn:hover{background:rgba(255,255,255,0.13);color:rgba(255,255,255,0.9)}
+#edit-panel{position:absolute;top:14px;left:14px;background:rgba(8,6,20,0.92);border:0.5px solid rgba(255,255,255,0.12);border-radius:10px;padding:12px 14px;z-index:20;min-width:160px;display:none}
+#edit-panel h3{color:rgba(255,255,255,0.4);font-size:10px;font-weight:500;margin:0 0 10px;text-transform:uppercase;letter-spacing:0.1em}
+#edit-panel label{color:rgba(255,255,255,0.4);font-size:11px;display:block;margin:7px 0 2px}
+#edit-panel select,#edit-panel input[type=color]{width:100%;background:rgba(255,255,255,0.07);border:0.5px solid rgba(255,255,255,0.18);color:rgba(255,255,255,0.8);border-radius:6px;padding:4px 7px;font-size:11px;cursor:pointer}
+#edit-panel input[type=color]{height:28px;padding:2px 4px}
+#edit-panel input[type=range]{width:100%;accent-color:#a78bfa}
+.close-x{float:right;background:none;border:none;color:rgba(255,255,255,0.3);font-size:15px;cursor:pointer;line-height:1;margin-top:-2px}
+#add-shape-btn{width:100%;margin-top:9px;background:rgba(167,139,250,0.2);border:0.5px solid rgba(167,139,250,0.4);color:#c4b0ff;font-size:11px;padding:6px;border-radius:7px;cursor:pointer}
+#add-shape-btn:hover{background:rgba(167,139,250,0.35)}
+</style>
+</head>
+<body>
+<div id="room-wrap">
+  <div id="cursor"></div>
+  <div id="scene">
+    <div id="world">
+      <div id="room-geo"></div>
+      <div id="shapes-layer"></div>
+    </div>
+  </div>
+  <div id="controls">
+    <button class="ctrl-btn" id="add-btn-top">+ add shape</button>
+    <button class="ctrl-btn" id="edit-tog">edit selected</button>
+  </div>
+  <div id="edit-panel">
+    <button class="close-x" id="close-ep">×</button>
+    <h3 id="ep-title">shape</h3>
+    <label>type</label>
+    <select id="ep-type"><option value="cube">cube</option><option value="tetra">tetrahedron</option><option value="ring">ring</option><option value="sphere">sphere</option><option value="star">star prism</option></select>
+    <label>color</label>
+    <input type="color" id="ep-color" value="#7c5fe6"/>
+    <label>size <span id="ep-sz-out">60</span></label>
+    <input type="range" id="ep-size" min="25" max="120" value="60" step="1"/>
+    <label>depth <span id="ep-dz-out">0</span></label>
+    <input type="range" id="ep-dz" min="-280" max="280" value="0" step="1"/>
+    <button id="add-shape-btn">+ add new shape</button>
+  </div>
+</div>
+<script>
+const wrap=document.getElementById('room-wrap');
+const world=document.getElementById('world');
+const roomGeo=document.getElementById('room-geo');
+const shapesLayer=document.getElementById('shapes-layer');
+const cur=document.getElementById('cursor');
+const ep=document.getElementById('edit-panel');
+
+let mx=0,my=0,selId=null,floatT=0,nextId=6;
+
+const shapes=[
+  {id:1,type:'cube',   x:20,y:38,z:-130,size:60,color:'#7c5fe6',label:'alpha'},
+  {id:2,type:'tetra',  x:52,y:28,z:70,  size:68,color:'#e05b8e',label:'beta'},
+  {id:3,type:'ring',   x:78,y:44,z:-65, size:62,color:'#5bbde0',label:'gamma'},
+  {id:4,type:'sphere', x:34,y:60,z:150, size:74,color:'#5de09a',label:'delta'},
+  {id:5,type:'star',   x:65,y:62,z:-20, size:57,color:'#e09a3a',label:'epsilon'},
+];
+
+function hr(hex,a){const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return `rgba(${r},${g},${b},${a})`}
+
+function buildRoom(){
+  roomGeo.innerHTML='';
+  const planes=[
+    {key:'back', w:'160%',h:'160%',l:'-30%',t:'-30%', style:`transform:translateZ(-330px);background:#12082a;background-image:repeating-linear-gradient(rgba(255,255,255,0.018) 0 0.5px,transparent 0.5px 60px),repeating-linear-gradient(90deg,rgba(255,255,255,0.018) 0 0.5px,transparent 0.5px 60px);background-size:60px 60px`},
+    {key:'floor',w:'160%',h:'160%',l:'-30%',t:'72%',  style:`transform:rotateX(90deg);background:#0c0820;background-image:repeating-linear-gradient(rgba(255,255,255,0.04) 0 0.5px,transparent 0.5px 50px),repeating-linear-gradient(90deg,rgba(255,255,255,0.04) 0 0.5px,transparent 0.5px 50px);background-size:50px 50px`},
+    {key:'ceil', w:'160%',h:'160%',l:'-30%',t:'-32%', style:`transform:rotateX(-90deg);background:#100930`},
+    {key:'left', w:'160%',h:'200%',l:'-32%',t:'-50%', style:`transform:rotateY(90deg);background:#0e0826`},
+    {key:'right',w:'160%',h:'200%',l:'72%', t:'-50%', style:`transform:rotateY(-90deg);background:#0e0826`},
+  ];
+  planes.forEach(p=>{
+    const d=document.createElement('div');
+    d.className='room-plane';
+    d.style.cssText=`width:${p.w};height:${p.h};left:${p.l};top:${p.t};border:0.5px solid rgba(255,255,255,0.04);${p.style}`;
+    roomGeo.appendChild(d);
+  });
+}
+
+function makeCubeFaces(s,color){
+  const brightness=[0.22,0.1,0.17,0.09,0.28,0.06];
+  return [{w:s,h:s,tx:0,ty:0,tz:s/2,rx:0,ry:0},{w:s,h:s,tx:0,ty:0,tz:-s/2,rx:0,ry:180},{w:s,h:s,tx:s/2,ty:0,tz:0,rx:0,ry:90},{w:s,h:s,tx:-s/2,ty:0,tz:0,rx:0,ry:-90},{w:s,h:s,tx:0,ty:-s/2,tz:0,rx:90,ry:0},{w:s,h:s,tx:0,ty:s/2,tz:0,rx:-90,ry:0}]
+  .map((f,i)=>{const d=document.createElement('div');d.className='face';d.style.cssText=`width:${f.w}px;height:${f.h}px;background:${hr(color,brightness[i])};border:1px solid ${hr(color,0.65)};transform:translateX(${f.tx}px) translateY(${f.ty}px) translateZ(${f.tz}px) rotateX(${f.rx}deg) rotateY(${f.ry}deg);`;return d;});
+}
+
+function makeTetra(s,color){
+  const el=document.createElement('div');
+  el.style.cssText='position:absolute;transform-style:preserve-3d;';
+  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('width',s);svg.setAttribute('height',s);svg.setAttribute('viewBox',`0 0 ${s} ${s}`);
+  svg.style.cssText=`position:absolute;left:${-s/2}px;top:${-s/2}px;`;
+  [[[s/2,2],[s-2,s-2],[2,s-2]],[[s/2,2],[s-2,s-2],[s/2,s/2]],[[s/2,2],[2,s-2],[s/2,s/2]]].forEach((pts,i)=>{
+    const poly=document.createElementNS('http://www.w3.org/2000/svg','polygon');
+    poly.setAttribute('points',pts.map(p=>p.join(',')).join(' '));
+    poly.setAttribute('fill',hr(color,[0.32,0.2,0.12][i]));
+    poly.setAttribute('stroke',hr(color,0.85));poly.setAttribute('stroke-width','1.2');poly.setAttribute('stroke-linejoin','round');
+    svg.appendChild(poly);
+  });
+  el.appendChild(svg);return [el];
+}
+
+function makeRing(s,color){
+  return Array.from({length:14},(_,i)=>{
+    const ang=(i/14)*360;const d=document.createElement('div');d.className='face';
+    d.style.cssText=`width:${s*0.14}px;height:${s*0.14}px;border-radius:50%;background:${hr(color,0.85)};transform:rotateY(${ang}deg) translateX(${s*0.48}px);`;
+    return d;
+  });
+}
+
+function makeSphere(s,color){
+  const els=[];
+  [[1,0,0],[0.87,25,0],[0.87,-25,0],[0.5,55,0],[0.5,-55,0],[0.87,0,25],[0.87,0,-25],[0.5,0,55],[0.5,0,-55]].forEach(([sc,ry,rx])=>{
+    const r=s*sc*0.5;const d=document.createElement('div');d.className='face';
+    d.style.cssText=`width:${r*2}px;height:${r*2}px;left:${-r}px;top:${-r}px;border-radius:50%;border:1.2px solid ${hr(color,0.55)};transform:rotateY(${ry}deg) rotateX(${rx}deg);`;
+    els.push(d);
+  });
+  const core=document.createElement('div');
+  core.style.cssText=`position:absolute;width:${s*0.28}px;height:${s*0.28}px;left:${-s*0.14}px;top:${-s*0.14}px;border-radius:50%;background:${hr(color,0.5)};`;
+  els.push(core);return els;
+}
+
+function makeStar(s,color){
+  const el=document.createElement('div');el.style.cssText='position:absolute;transform-style:preserve-3d;';
+  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('width',s);svg.setAttribute('height',s);svg.setAttribute('viewBox',`0 0 ${s} ${s}`);
+  svg.style.cssText=`position:absolute;left:${-s/2}px;top:${-s/2}px;`;
+  const cx=s/2,cy=s/2,r1=s*0.46,r2=s*0.19,pts=5;
+  let path='M';
+  for(let i=0;i<pts*2;i++){const ang=(i*Math.PI/pts)-Math.PI/2;const r=i%2===0?r1:r2;path+=`${cx+r*Math.cos(ang)},${cy+r*Math.sin(ang)} `;}
+  path+='Z';
+  const star=document.createElementNS('http://www.w3.org/2000/svg','path');
+  star.setAttribute('d',path);star.setAttribute('fill',hr(color,0.3));star.setAttribute('stroke',hr(color,0.85));star.setAttribute('stroke-width','1.2');star.setAttribute('stroke-linejoin','round');
+  svg.appendChild(star);el.appendChild(svg);
+  const back=document.createElement('div');back.className='face';
+  back.style.cssText=`width:${s*0.6}px;height:${s*0.6}px;left:${-s*0.3}px;top:${-s*0.3}px;border-radius:50%;background:${hr(color,0.12)};transform:translateZ(-${s*0.18}px);`;
+  return [el,back];
+}
+
+function buildShape(s){
+  const wrapEl=document.createElement('div');
+  wrapEl.className='shape-wrap';wrapEl.dataset.id=s.id;
+  wrapEl.style.cssText=`left:${s.x}%;top:${s.y}%;transform:translateZ(${s.z}px);`;
+
+  const inner=document.createElement('div');
+  inner.className='shape-inner';inner.style.cssText='position:absolute;transform-style:preserve-3d;';
+
+  const faceMap={cube:makeCubeFaces,tetra:makeTetra,ring:makeRing,sphere:makeSphere,star:makeStar};
+  const faces=(faceMap[s.type]||makeCubeFaces)(s.size,s.color);
+  faces.forEach(f=>{if(!f.style.position)f.style.position='absolute';inner.appendChild(f);});
+
+  const glow=document.createElement('div');
+  const gs=s.size*2;
+  glow.style.cssText=`position:absolute;width:${gs}px;height:${gs}px;left:${-gs/2}px;top:${-gs/2}px;border-radius:50%;background:radial-gradient(circle,${hr(s.color,0.15)} 0%,transparent 70%);pointer-events:none;opacity:0;transition:opacity 0.3s`;
+  inner.appendChild(glow);
+
+  const label=document.createElement('div');
+  label.className='shape-label';label.textContent=s.label;
+
+  wrapEl.appendChild(inner);wrapEl.appendChild(label);
+  wrapEl.addEventListener('mouseenter',()=>glow.style.opacity='1');
+  wrapEl.addEventListener('mouseleave',()=>glow.style.opacity='0');
+  wrapEl.addEventListener('click',e=>{e.stopPropagation();spawnPop(s,e);selectShape(s.id);});
+  return wrapEl;
+}
+
+function spawnPop(s,e){
+  const r=wrap.getBoundingClientRect();
+  const bx=e.clientX-r.left,by=e.clientY-r.top;
+  for(let i=0;i<18;i++){
+    const p=document.createElement('div');
+    p.className='pop-particle';
+    const ang=Math.random()*Math.PI*2,dist=35+Math.random()*70,sz=3+Math.random()*6;
+    p.style.cssText=`width:${sz}px;height:${sz}px;left:${bx}px;top:${by}px;background:${s.color};--dx:${Math.cos(ang)*dist}px;--dy:${Math.sin(ang)*dist}px;`;
+    wrap.appendChild(p);
+    setTimeout(()=>p.remove(),650);
+  }
+}
+
+function renderAll(){shapesLayer.innerHTML='';shapes.forEach(s=>shapesLayer.appendChild(buildShape(s)));}
+
+function selectShape(id){
+  selId=id;
+  const s=shapes.find(x=>x.id===id);if(!s)return;
+  document.getElementById('ep-title').textContent=s.label;
+  document.getElementById('ep-type').value=s.type;
+  document.getElementById('ep-color').value=s.color;
+  document.getElementById('ep-size').value=s.size;
+  document.getElementById('ep-sz-out').textContent=s.size;
+  document.getElementById('ep-dz').value=s.z;
+  document.getElementById('ep-dz-out').textContent=s.z;
+  ep.style.display='block';
+}
+
+document.getElementById('close-ep').addEventListener('click',()=>{ep.style.display='none';selId=null;});
+document.getElementById('edit-tog').addEventListener('click',()=>{
+  if(selId) ep.style.display=ep.style.display==='none'?'block':'none';
+  else if(shapes.length) selectShape(shapes[0].id);
+});
+
+function syncSelected(){
+  if(!selId)return;
+  const s=shapes.find(x=>x.id===selId);if(!s)return;
+  s.type=document.getElementById('ep-type').value;
+  s.color=document.getElementById('ep-color').value;
+  s.size=parseInt(document.getElementById('ep-size').value);
+  s.z=parseInt(document.getElementById('ep-dz').value);
+  document.getElementById('ep-sz-out').textContent=s.size;
+  document.getElementById('ep-dz-out').textContent=s.z;
+  renderAll();
+}
+['ep-type','ep-color','ep-size','ep-dz'].forEach(id=>document.getElementById(id).addEventListener('input',syncSelected));
+
+function addShape(){
+  const cols=['#7c5fe6','#e05b8e','#5bbde0','#5de09a','#e09a3a','#de5b5b','#a05be0','#e0d45b'];
+  const types=['cube','tetra','ring','sphere','star'];
+  const ns={
+    id:nextId++,
+    type:types[Math.floor(Math.random()*types.length)],
+    x:12+Math.random()*76,y:18+Math.random()*58,
+    z:Math.round((Math.random()-0.5)*440),
+    size:38+Math.round(Math.random()*68),
+    color:cols[Math.floor(Math.random()*cols.length)],
+    label:`shape ${nextId-1}`
+  };
+  shapes.push(ns);renderAll();selectShape(ns.id);
+}
+document.getElementById('add-btn-top').addEventListener('click',addShape);
+document.getElementById('add-shape-btn').addEventListener('click',addShape);
+
+wrap.addEventListener('mousemove',e=>{
+  const r=wrap.getBoundingClientRect();
+  mx=((e.clientX-r.left)/r.width-0.5)*2;
+  my=((e.clientY-r.top)/r.height-0.5)*2;
+  cur.style.left=(e.clientX-r.left)+'px';
+  cur.style.top=(e.clientY-r.top)+'px';
+});
+wrap.addEventListener('mouseleave',()=>{mx=0;my=0;cur.style.opacity='0';});
+wrap.addEventListener('mouseenter',()=>cur.style.opacity='1');
+
+let ctX=0,ctY=0;
+function tick(){
+  floatT+=0.0025;
+  ctX+=(my*-32-ctX)*0.055;
+  ctY+=(mx*42-ctY)*0.055;
+  world.style.transform=`rotateX(${ctX}deg) rotateY(${ctY}deg)`;
+  shapes.forEach((s,i)=>{
+    const el=shapesLayer.querySelector(`[data-id="${s.id}"]`);if(!el)return;
+    const fy=Math.sin(floatT+i*1.3)*13;
+    const spin=(floatT*20+i*58)%360;
+    el.style.transform=`translateZ(${s.z}px) translateY(${fy}px) rotateY(${spin}deg)`;
+  });
+  requestAnimationFrame(tick);
+}
+
+buildRoom();renderAll();tick();
+</script>
+</body>
+</html>
