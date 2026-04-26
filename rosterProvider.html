@@ -109,7 +109,7 @@
     </div>
     <div id="filter-options"></div>
     <p class="selected-note" id="selected-note"></p>
-    <button class="download-btn" id="download-btn" onclick="downloadFile()" disabled>Download cleaned file (.xlsx)</button>
+    <button class="download-btn" id="download-btn" onclick="downloadFile()" disabled>Download formatted file (.xlsx)</button>
     <button class="reset-btn" onclick="resetTool()">Upload another file</button>
   </div>
 </div>
@@ -117,7 +117,7 @@
 <script>
   let cleanedData = [];
   let customFieldColIndex = -1;
-  let outputFilename = 'cleaned.xlsx';
+  let outputFilename = 'formatted.xlsx';
 
   const COLS_TO_REMOVE = new Set([2, 4, 5, 6, 9, 10, 11, 12, 13, 14, 15, 16, 18, 19, 20]);
   const COL_H_INDEX = 7;
@@ -160,7 +160,7 @@
         const result = processWorkbook(wb);
         cleanedData = result.data;
         customFieldColIndex = result.customFieldColIndex;
-        outputFilename = file.name.replace(/\.[^.]+$/, '') + '_cleaned.xlsx';
+        outputFilename = file.name.replace(/\.[^.]+$/, '') + '_formatted.xlsx';
         showStatus(file.name, result.stats);
         buildFilterUI();
         document.getElementById('error-msg').style.display = 'none';
