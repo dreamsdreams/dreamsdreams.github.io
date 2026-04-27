@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MyPath Nurse List Generator</title>
+  <title>MyPath Bulk List Generator</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -161,6 +161,31 @@
 </head>
 <body>
   <div class="card">
+    <div style="background:#f5f5f3;border:0.5px solid rgba(0,0,0,0.1);border-radius:12px;padding:1rem 1.25rem;margin-bottom:1.5rem;">
+  <p style="font-size:13px;font-weight:500;color:#888;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:0.75rem;">How to use</p>
+  <ol style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px;">
+    <li style="display:flex;align-items:flex-start;gap:10px;font-size:14px;">
+      <span style="min-width:22px;height:22px;border-radius:50%;background:#fff;border:0.5px solid rgba(0,0,0,0.2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;color:#666;flex-shrink:0;margin-top:1px;">1</span>
+      <span>In Healthstream, go to <strong style="font-weight:500;">Reports</strong> → <strong style="font-weight:500;">Class Contacts</strong></span>
+    </li>
+    <li style="display:flex;align-items:flex-start;gap:10px;font-size:14px;">
+      <span style="min-width:22px;height:22px;border-radius:50%;background:#fff;border:0.5px solid rgba(0,0,0,0.2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;color:#666;flex-shrink:0;margin-top:1px;">2</span>
+      <span>Select the class you want to grade</span>
+    </li>
+    <li style="display:flex;align-items:flex-start;gap:10px;font-size:14px;">
+      <span style="min-width:22px;height:22px;border-radius:50%;background:#fff;border:0.5px solid rgba(0,0,0,0.2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;color:#666;flex-shrink:0;margin-top:1px;">3</span>
+      <span>Choose <strong style="font-weight:500;">Registered Only</strong> for class status, then press <strong style="font-weight:500;">Continue</strong></span>
+    </li>
+    <li style="display:flex;align-items:flex-start;gap:10px;font-size:14px;">
+      <span style="min-width:22px;height:22px;border-radius:50%;background:#fff;border:0.5px solid rgba(0,0,0,0.2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;color:#666;flex-shrink:0;margin-top:1px;">4</span>
+      <span>In the top right, select <strong style="font-weight:500;">Export</strong> → <strong style="font-weight:500;">CSV</strong></span>
+    </li>
+    <li style="display:flex;align-items:flex-start;gap:10px;font-size:14px;">
+      <span style="min-width:22px;height:22px;border-radius:50%;background:#fff;border:0.5px solid rgba(0,0,0,0.2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;color:#666;flex-shrink:0;margin-top:1px;">5</span>
+      <span>Upload the file below</span>
+    </li>
+  </ol>
+</div>
     <h1>MyPath Nurse List Generator</h1>
     <p class="subtitle">Takes in a Class Roster file and returns a copy-able list to bulk grade on.</p>
 
