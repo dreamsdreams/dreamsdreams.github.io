@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Schedule Editor</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
@@ -392,7 +391,7 @@
   <div id="calendarContainer"></div>
 
   <div class="action-bar">
-    <button class="btn btn-primary" onclick="saveXlsx()">💾 Save &amp; Download Updated File</button>
+    <button class="btn btn-primary" onclick="downloadReport()">📄 Download Schedule Report</button>
     <button class="btn btn-ghost" onclick="resetAll()">← Load a different file</button>
   </div>
 </div>
@@ -416,7 +415,6 @@
 <script>
 let workbook = null;
 let wsData = [];
-let rawFileBytes = null;  // original file kept byte-for-byte for formatting-safe save
 let selectedRowIdx = -1;
 let colDateMap = [];
 let editedCells = {};
@@ -442,8 +440,7 @@ fileInput.addEventListener('change', e => { if (e.target.files[0]) loadFile(e.ta
 function loadFile(file) {
   const reader = new FileReader();
   reader.onload = e => {
-    rawFileBytes = e.target.result.slice(0); // keep pristine copy for ZIP-level save
-    workbook = XLSX.read(e.target.result, { type: 'array', cellDates: true });
+workbook = XLSX.read(e.target.result, { type: 'array', cellDates: true, cellStyles: true });
 
     // Pick the first sheet that has a schedule (contains date headers in row 1)
     // Try to find a sheet with DateTime values in row 1; fall back to sheet[0]
@@ -720,194 +717,218 @@ function applyCustom() {
   applyValue(document.getElementById('popupCustom').value.trim() || null);
 }
 
-// ── Save updated xlsx — ZIP surgical patch (preserves ALL formatting) ────────
-async function saveXlsx() {
-  if (!rawFileBytes || selectedRowIdx < 0) return;
+// ── Download HTML report ─────────────────────────────────────────────────────
+function downloadReport() {
+  if (!workbook || selectedRowIdx < 0) return;
 
-  // Commit edits into wsData so the calendar reflects the saved state immediately
-  const row = wsData[selectedRowIdx] || [];
-  const edits = Object.assign({}, editedCells); // snapshot before clearing
-  for (const [col0str, val] of Object.entries(edits)) {
-    row[parseInt(col0str)] = val;
+  // Apply any pending edits to in-memory data first
+  const empRow = (wsData[selectedRowIdx] || []).slice();
+  for (const [col0str, val] of Object.entries(editedCells)) {
+    empRow[parseInt(col0str)] = val;
   }
   editedCells = {};
-  renderMonths(row);
-  renderSummary(row);
+  wsData[selectedRowIdx] = empRow;
+  renderMonths(empRow);
+  renderSummary(empRow);
 
-  // --- ZIP-level surgical patch ---
-  // An xlsx file is just a ZIP. We open it, find the sheet XML, patch only the
-  // changed cells' values in the raw XML, then re-zip. Every style, color,
-  // border, merged cell, and formula stays exactly as it was.
+  const emp = allEmployeeRows.find(e => e.rowIdx === selectedRowIdx);
+  const empName = emp ? emp.name : 'Employee';
 
-  const zip = await JSZip.loadAsync(rawFileBytes);
+  // ── Build column list: only the day-value columns (from colDateMap) ──────
+  // Plus the info columns (1-16, 0-based 0-15)
+  const INFO_COLS = 16; // cols 0-15 are name/id/type/skills/etc.
 
-  // Find the sheet's XML path from workbook.xml.rels
-  const wbRelsXml = await zip.file('xl/_rels/workbook.xml.rels').async('string');
-  const wbXml     = await zip.file('xl/workbook.xml').async('string');
+  // Header rows we want to show: row 9 (col headers, 0-based idx 8) is the main one
+  // We'll show row 8 (day numbers) and row 9 (labels) as the two header rows
+  const headerRowA = wsData[DATE_ROW_IDX] || [];     // row 8 — day numbers
+  const headerRowB = wsData[DATE_ROW_IDX + 1] || []; // row 9 — Name, 3-4ID, Type…
 
-  // Parse sheet name -> rId mapping from workbook.xml
-  const sheetNameMatch = [...wbXml.matchAll(/<sheet\b[^>]*name="([^"]*)"[^>]*r:id="([^"]*)"/g)];
-  let sheetRId = null;
-  for (const m of sheetNameMatch) {
-    if (m[1] === activeSheetName) { sheetRId = m[2]; break; }
-  }
-  if (!sheetRId) { showToast('⚠ Could not locate sheet in workbook — try again'); return; }
-
-  // Resolve rId -> actual file path
-  const relMatch = wbRelsXml.match(new RegExp(`Id="${sheetRId}"[^>]*Target="([^"]*)"`));
-  if (!relMatch) { showToast('⚠ Could not resolve sheet path'); return; }
-  let sheetPath = relMatch[1];
-  if (!sheetPath.startsWith('xl/')) sheetPath = 'xl/' + sheetPath;
-
-  let sheetXml = await zip.file(sheetPath).async('string');
-
-  // Also load sharedStrings if present (we may need to add new string entries)
-  const ssPath = 'xl/sharedStrings.xml';
-  let ssXml = zip.file(ssPath) ? await zip.file(ssPath).async('string') : null;
-  let sharedStrings = [];  // array of string values in order
-
-  if (ssXml) {
-    // Extract existing shared strings (simple text only, no rich text parsing needed for our values)
-    const siMatches = [...ssXml.matchAll(/<si>.*?<\/si>/gs)];
-    sharedStrings = siMatches.map(m => {
-      const tMatch = m[0].match(/<t(?:[^>]*)>([\s\S]*?)<\/t>/);
-      return tMatch ? tMatch[1].replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>') : '';
-    });
+  // Gather all columns we care about: info cols + every day col
+  const dayCols = colDateMap.map(cd => cd.col0);
+  // Also include the weekly-sum gap cols (between day blocks) — find them as
+  // cols between day ranges that have a value in row 6 ("Weekly Hours")
+  const row6 = wsData[5] || [];
+  const weeklyCols = [];
+  for (let c = INFO_COLS; c < (wsData[0] || []).length; c++) {
+    const v = row6[c];
+    if (v && String(v).toLowerCase().includes('weekly')) weeklyCols.push(c);
   }
 
-  // Helper: get or add a shared string index
-  function sharedStringIdx(val) {
-    let idx = sharedStrings.indexOf(val);
-    if (idx === -1) {
-      idx = sharedStrings.length;
-      sharedStrings.push(val);
-    }
-    return idx;
-  }
+  // Final column order: info cols, then interleaved day+weekly cols in file order
+  const allCols = [];
+  for (let c = 0; c < INFO_COLS; c++) allCols.push(c);
+  const schedCols = [...new Set([...dayCols, ...weeklyCols])].sort((a,b) => a-b);
+  allCols.push(...schedCols);
 
-  // Helper: convert 0-based col number to Excel letter(s)  e.g. 0->A, 26->AA
-  function colLetter(n) {
-    let s = '';
-    for (n++; n > 0; n = Math.floor((n-1)/26)) s = String.fromCharCode(65+((n-1)%26)) + s;
+  // ── Cell value helper ─────────────────────────────────────────────────────
+  function cellVal(rowArr, col) {
+    const v = rowArr[col];
+    if (v === null || v === undefined) return '';
+    const s = String(v).trim();
+    if (s.startsWith('=')) return ''; // skip formulas
     return s;
   }
 
-  // For each edited cell, patch the XML
-  const ws = workbook.Sheets[activeSheetName];
-
-  for (const [col0str, val] of Object.entries(edits)) {
-    const col0 = parseInt(col0str);
-    const rowNum = selectedRowIdx + 1;   // 1-based Excel row
-    const cellRef = colLetter(col0) + rowNum;  // e.g. "T23"
-
-    // Check original cell — skip if it was a formula (preserve formula cells)
-    const origCell = ws[XLSX.utils.encode_cell({ r: selectedRowIdx, c: col0 })];
-    if (origCell && origCell.f) continue;
-
-    // Build the new <c> element content
-    let newCellXml;
-    if (val === null || val === '') {
-      // Clear: replace cell with empty value node, keep style attr if present
-      // We'll just set v to empty and remove the type so Excel treats it as blank
-      newCellXml = null; // signal to remove the cell element
-    } else {
-      const n = parseFloat(val);
-      if (!isNaN(n)) {
-        // Numeric value — type='n' (or no t attr), <v>number</v>
-        newCellXml = `<v>${n}</v>`;
-      } else {
-        // String value — use inline string to avoid shared strings complexity
-        const escaped = val.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-        newCellXml = `inlineStr_${escaped}`; // marker, handled below
-      }
-    }
-
-    // Find this cell in the sheet XML and patch it
-    // Cell pattern: <c r="T23" ... > ... </c>  (may span multiple lines)
-    const cellRegex = new RegExp(
-      `(<c\\b[^>]*\\br="${cellRef}"[^>]*>)([\\s\\S]*?)(</c>)`, 'g'
-    );
-
-    const existingMatch = cellRegex.exec(sheetXml);
-
-    if (existingMatch) {
-      // Cell exists — patch its value, preserve its attributes (style, etc.)
-      const openTag = existingMatch[1];
-      const closeTag = existingMatch[3];
-      let newOpen = openTag;
-
-      if (newCellXml === null) {
-        // Clear the cell: keep tag but empty value
-        sheetXml = sheetXml.replace(existingMatch[0],
-          newOpen.replace(/\s*t="[^"]*"/, '') + '<v/>' + closeTag
-        );
-      } else if (newCellXml.startsWith('inlineStr_')) {
-        const strVal = newCellXml.slice(10);
-        // Change type to inline string
-        if (/\bt="/.test(newOpen)) {
-          newOpen = newOpen.replace(/\bt="[^"]*"/, 't="inlineStr"');
-        } else {
-          newOpen = newOpen.replace(/<c\b/, '<c t="inlineStr"');
-        }
-        sheetXml = sheetXml.replace(existingMatch[0],
-          newOpen + `<is><t>${strVal}</t></is>` + closeTag
-        );
-      } else {
-        // Numeric — remove type attr (numeric is default), set <v>
-        newOpen = newOpen.replace(/\s*t="[^"]*"/, '');
-        sheetXml = sheetXml.replace(existingMatch[0],
-          newOpen + newCellXml + closeTag
-        );
-      }
-    } else {
-      // Cell doesn't exist in XML yet (was blank) — inject into the correct <row>
-      if (newCellXml === null) continue; // nothing to do for blank->blank
-
-      const rowRegex = new RegExp(`(<row\\b[^>]*\\br="${rowNum}"[^>]*>)([\\s\\S]*?)(</row>)`);
-      const rowMatch = rowRegex.exec(sheetXml);
-
-      if (rowMatch) {
-        let newCell;
-        if (newCellXml.startsWith('inlineStr_')) {
-          const strVal = newCellXml.slice(10);
-          newCell = `<c r="${cellRef}" t="inlineStr"><is><t>${strVal}</t></is></c>`;
-        } else {
-          newCell = `<c r="${cellRef}">${newCellXml}</c>`;
-        }
-        // Insert in correct column order within the row
-        // Simple approach: append before </row> then let Excel reorder on open
-        sheetXml = sheetXml.replace(rowMatch[0],
-          rowMatch[1] + rowMatch[2] + newCell + rowMatch[3]
-        );
-      }
-    }
+  // ── Color coding for day cells ────────────────────────────────────────────
+  function cellStyle(col, rowArr) {
+    if (col < INFO_COLS) return '';
+    if (weeklyCols.includes(col)) return 'background:#f0f4ff;font-style:italic;color:#555;';
+    const v = cellVal(rowArr, col).toUpperCase();
+    if (!v) return 'background:#fff;';
+    if (v === 'OFF')  return 'background:#fff4f0;color:#e8622a;font-weight:700;';
+    if (v === 'PTO')  return 'background:#fff8e1;color:#b45309;font-weight:700;';
+    if (v === 'OOO' || v === 'ooo') return 'background:#f3f4f6;color:#6b7280;font-weight:600;';
+    if (v === 'ADM' || v === 'adm') return 'background:#fdf4ff;color:#7e22ce;font-weight:700;';
+    if (!isNaN(parseFloat(v))) return 'background:#e8f0fe;color:#1d4ed8;font-weight:700;';
+    return 'background:#f9fafb;color:#374151;';
   }
 
-  // Write patched sheet back into ZIP
-  zip.file(sheetPath, sheetXml);
+  // ── Figure out which col belongs to which month (for month header row) ───
+  function monthForCol(col) {
+    for (const ms of MONTH_STARTS) {
+      const daysInMonth = new Date(ms.year, ms.month + 1, 0).getDate();
+      const monthDayCols = colDateMap
+        .filter(cd => cd.monthName === ms.name)
+        .map(cd => cd.col0);
+      if (monthDayCols.includes(col)) return ms.name;
+      if (weeklyCols.includes(col)) {
+        // assign to nearest preceding month
+        const prev = colDateMap.filter(cd => cd.col0 < col);
+        if (prev.length) return prev[prev.length-1].monthName;
+      }
+    }
+    return '';
+  }
 
-  // Re-zip and download
-  const outputBlob = await zip.generateAsync({
-    type: 'blob',
-    mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    compression: 'DEFLATE',
-    compressionOptions: { level: 6 }
-  });
+  // ── Build month span header ───────────────────────────────────────────────
+  // Group consecutive schedule cols by month
+  const monthSpans = []; // [{name, start, count}]
+  let lastMonth = null, spanCount = 0, spanStart = 0;
+  for (let i = INFO_COLS; i < allCols.length; i++) {
+    const mn = monthForCol(allCols[i]);
+    if (mn !== lastMonth) {
+      if (lastMonth !== null) monthSpans.push({ name: lastMonth, count: spanCount });
+      lastMonth = mn; spanCount = 1; spanStart = i;
+    } else { spanCount++; }
+  }
+  if (lastMonth) monthSpans.push({ name: lastMonth, count: spanCount });
 
-  const safeName = activeSheetName.replace(/[^\w\s\-]/g, '').trim();
+  // ── DOW label for day cols ────────────────────────────────────────────────
+  const DOW = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+  function dowForCol(col) {
+    const cd = colDateMap.find(c => c.col0 === col);
+    return cd ? DOW[cd.dow] : '';
+  }
+  function isWeekend(col) {
+    const cd = colDateMap.find(c => c.col0 === col);
+    return cd ? (cd.dow === 0 || cd.dow === 6) : false;
+  }
+
+  // ── Generate HTML ─────────────────────────────────────────────────────────
+  function th(content, extra='', style='') {
+    return `<th ${extra} style="padding:5px 7px;border:1px solid #d1d5db;white-space:nowrap;font-size:11px;${style}">${content}</th>`;
+  }
+  function td(content, style='') {
+    return `<td style="padding:4px 6px;border:1px solid #e5e7eb;text-align:center;font-size:11px;${style}">${content}</td>`;
+  }
+
+  // Row 1: month spans
+  let monthHeaderRow = `<tr><th colspan="${INFO_COLS}" style="padding:5px 8px;border:1px solid #d1d5db;background:#1e3a5f;color:#fff;font-size:12px;text-align:center;">Employee Info</th>`;
+  for (const ms of monthSpans) {
+    monthHeaderRow += `<th colspan="${ms.count}" style="padding:5px 8px;border:1px solid #d1d5db;background:#1e3a5f;color:#fff;font-size:12px;text-align:center;">${ms.name}</th>`;
+  }
+  monthHeaderRow += '</tr>';
+
+  // Row 2: col labels (Name, ID, Type… then day numbers / "Wk Hrs")
+  let labelRow = '<tr>';
+  for (let i = 0; i < allCols.length; i++) {
+    const c = allCols[i];
+    if (c < INFO_COLS) {
+      const label = cellVal(headerRowB, c) || '';
+      labelRow += th(label, '', 'background:#374151;color:#fff;text-align:center;');
+    } else if (weeklyCols.includes(c)) {
+      labelRow += th('Wk<br>Hrs', '', 'background:#3b4f6b;color:#fff;text-align:center;min-width:32px;');
+    } else {
+      const dayNum = cellVal(headerRowA, c);
+      const dow = dowForCol(c);
+      const wknd = isWeekend(c);
+      const bg = wknd ? '#4a5568' : '#374151';
+      labelRow += th(`${dayNum}<br><span style="font-weight:400;opacity:0.75;">${dow}</span>`,
+        '', `background:${bg};color:#fff;text-align:center;min-width:28px;`);
+    }
+  }
+  labelRow += '</tr>';
+
+  // Row 3: the employee's actual data
+  let dataRow = '<tr>';
+  for (let i = 0; i < allCols.length; i++) {
+    const c = allCols[i];
+    const v = cellVal(empRow, c);
+    if (c < INFO_COLS) {
+      const bold = c === 0 ? 'font-weight:700;' : '';
+      dataRow += td(v, `text-align:left;${bold}background:#f8faff;`);
+    } else {
+      dataRow += td(v, cellStyle(c, empRow));
+    }
+  }
+  dataRow += '</tr>';
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Schedule — ${empName}</title>
+<style>
+  body { font-family: Arial, sans-serif; padding: 24px; background: #f9fafb; color: #111; }
+  h2 { font-size: 16px; margin-bottom: 4px; color: #1e3a5f; }
+  .meta { font-size: 12px; color: #6b7280; margin-bottom: 16px; }
+  .table-wrap { overflow-x: auto; }
+  table { border-collapse: collapse; font-size: 11px; }
+  .legend { display: flex; gap: 16px; margin-top: 14px; flex-wrap: wrap; }
+  .leg { display: flex; align-items: center; gap: 5px; font-size: 11px; color: #555; }
+  .leg-dot { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+  @media print { body { padding: 8px; } }
+</style>
+</head>
+<body>
+<h2>Schedule Report — ${empName}</h2>
+<div class="meta">
+  ${emp ? `ID: ${emp.id || '—'} &nbsp;·&nbsp; Type: ${emp.type || '—'} &nbsp;·&nbsp;` : ''}
+  Period: ${MONTH_STARTS.map(m=>m.name).join(', ')} &nbsp;·&nbsp;
+  Generated: ${new Date().toLocaleDateString('en-US', {month:'long',day:'numeric',year:'numeric'})}
+</div>
+<div class="table-wrap">
+<table>
+  <thead>${monthHeaderRow}${labelRow}</thead>
+  <tbody>${dataRow}</tbody>
+</table>
+</div>
+<div class="legend">
+  <span class="leg"><span class="leg-dot" style="background:#e8f0fe;border:1px solid #93c5fd;"></span>Shift hours (8/12)</span>
+  <span class="leg"><span class="leg-dot" style="background:#fff4f0;border:1px solid #ffc9b0;"></span>OFF</span>
+  <span class="leg"><span class="leg-dot" style="background:#fff8e1;border:1px solid #fcd34d;"></span>PTO</span>
+  <span class="leg"><span class="leg-dot" style="background:#f3f4f6;border:1px solid #d1d5db;"></span>OOO</span>
+  <span class="leg"><span class="leg-dot" style="background:#fdf4ff;border:1px solid #d8b4fe;"></span>ADM</span>
+  <span class="leg"><span class="leg-dot" style="background:#f0f4ff;border:1px solid #a5b4fc;"></span>Weekly Hours</span>
+</div>
+</body>
+</html>`;
+
+  const blob = new Blob([html], { type: 'text/html' });
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(outputBlob);
-  a.download = (safeName || 'schedule') + '_updated.xlsx';
+  a.href = URL.createObjectURL(blob);
+  a.download = empName.replace(/[^\w\s-]/g,'').trim().replace(/\s+/g,'_') + '_schedule.html';
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(a.href);
 
-  showToast('✓ Downloaded — all colors and formatting preserved');
+  showToast('✓ Report downloaded — open in any browser or print to PDF');
 }
 
+
 function resetAll() {
-  workbook = null; wsData = []; rawFileBytes = null; selectedRowIdx = -1;
+  workbook = null; wsData = []; selectedRowIdx = -1;
   colDateMap = []; editedCells = {}; allEmployeeRows = [];
   ['step1','step2','step3'].forEach(id => setCard(id, ''));
   setCard('step1', 'active');
