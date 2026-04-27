@@ -45,6 +45,16 @@
     line-height: 1.5;
   }
 
+  .back-btn {
+    position: fixed; top: 1rem; left: 1rem;
+    font-family: inherit; font-size: 12px; color: #888;
+    background: #fff; border: 0.5px solid rgba(0,0,0,0.15);
+    border-radius: 6px; padding: 4px 9px; cursor: pointer;
+    text-decoration: none; transition: background 0.12s, color 0.12s;
+    z-index: 999;
+  }
+  .back-btn:hover { background: #f0f0ee; color: #1a1a18; }
+
   .header {
     max-width: 860px;
     margin: 0 auto 1.75rem;
@@ -217,16 +227,11 @@
   }
   .cal-day.empty { background: transparent; border-color: transparent; cursor: default; pointer-events: none; }
 
-  /* Saturday */
   .cal-day.sat { background: var(--sat-bg); border-color: var(--sat-border); }
-  /* Sunday */
   .cal-day.sun { background: var(--sun-bg); border-color: var(--sun-border); }
-  /* Working any day — blue */
   .cal-day.work { background: var(--accent); border-color: var(--accent-hover); }
-  /* Working weekends — same blue (weekends now match weekdays) */
   .cal-day.work.sat { background: var(--accent); border-color: var(--accent-hover); }
   .cal-day.work.sun { background: var(--accent); border-color: var(--accent-hover); }
-  /* OFF — reddish orange */
   .cal-day.off { background: var(--off-bg); border-color: var(--off-border); }
   .cal-day.off.sat { background: var(--off-bg); border-color: var(--off-border); }
   .cal-day.off.sun { background: var(--off-bg); border-color: var(--off-border); }
@@ -352,6 +357,8 @@
 </head>
 <body>
 
+<a class="back-btn" href="https://www.haydens.cool/">← Home</a>
+
 <div class="header">
   <div class="header-icon">📅</div>
   <div>
@@ -443,11 +450,10 @@ let editedCells = {};
 let currentPopupCol = -1;
 let allEmployeeRows = [];
 let activeSheetName = '';
-let MONTH_STARTS = []; // dynamically built from each file
+let MONTH_STARTS = [];
 const DATE_ROW_IDX = 7;
 const DATA_START_ROW = 9;
 
-// ── File loading ──────────────────────────────────────────────────────────────
 const dropZone = document.getElementById('dropZone');
 const fileInput = document.getElementById('fileInput');
 
@@ -462,10 +468,8 @@ fileInput.addEventListener('change', e => { if (e.target.files[0]) loadFile(e.ta
 function loadFile(file) {
   const reader = new FileReader();
   reader.onload = e => {
-workbook = XLSX.read(e.target.result, { type: 'array', cellDates: true, cellStyles: true });
+    workbook = XLSX.read(e.target.result, { type: 'array', cellDates: true, cellStyles: true });
 
-    // Pick the first sheet that has a schedule (contains date headers in row 1)
-    // Try to find a sheet with DateTime values in row 1; fall back to sheet[0]
     activeSheetName = workbook.SheetNames[0];
     for (const name of workbook.SheetNames) {
       const ws = workbook.Sheets[name];
@@ -475,13 +479,11 @@ workbook = XLSX.read(e.target.result, { type: 'array', cellDates: true, cellStyl
       if (hasDate) { activeSheetName = name; break; }
     }
 
-    // Parse with cellDates so Date objects come through
     const wsRaw = XLSX.utils.sheet_to_json(
       workbook.Sheets[activeSheetName],
       { header: 1, defval: null, raw: true }
     );
 
-    // Build MONTH_STARTS from row 1 Date objects
     MONTH_STARTS = [];
     const row1Raw = wsRaw[0] || [];
     const MONTH_NAMES = ['January','February','March','April','May','June',
@@ -490,14 +492,13 @@ workbook = XLSX.read(e.target.result, { type: 'array', cellDates: true, cellStyl
       if (v instanceof Date) {
         MONTH_STARTS.push({
           col0,
-          month: v.getMonth(),   // 0-based
+          month: v.getMonth(),
           year: v.getFullYear(),
           name: `${MONTH_NAMES[v.getMonth()]} ${v.getFullYear()}`
         });
       }
     });
 
-    // Re-parse as strings for display/editing (raw:false gives us readable cell values)
     wsData = XLSX.utils.sheet_to_json(
       workbook.Sheets[activeSheetName],
       { header: 1, defval: null, raw: false }
@@ -549,7 +550,6 @@ function buildEmployeeList() {
   }
 }
 
-// ── Employee list ─────────────────────────────────────────────────────────────
 document.getElementById('searchBox').addEventListener('input', renderRowList);
 
 function renderRowList() {
@@ -589,7 +589,6 @@ function selectEmployee(emp) {
   document.getElementById('step3').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-// ── Calendar ──────────────────────────────────────────────────────────────────
 function buildCalendar(emp) {
   const row = wsData[emp.rowIdx] || [];
   const initials = emp.name.split(/[\s,]+/).map(p => p[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
@@ -641,7 +640,6 @@ function renderMonths(row) {
     const grid = document.createElement('div');
     grid.className = 'cal-grid';
 
-    // Day-of-week headers — all 7 days
     ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach((d, i) => {
       const h = document.createElement('div');
       h.className = 'cal-dow' + (i === 0 ? ' sun-h' : i === 6 ? ' sat-h' : '');
@@ -649,14 +647,12 @@ function renderMonths(row) {
       grid.appendChild(h);
     });
 
-    // Leading blank cells before the month starts
     for (let i = 0; i < cols[0].dow; i++) {
       const blank = document.createElement('div');
       blank.className = 'cal-day empty';
       grid.appendChild(blank);
     }
 
-    // Every day in the month — weekends fully clickable and editable
     for (const cd of cols) {
       const v = getVal(row, cd.col0);
       const rawVal = (v !== null && v !== undefined) ? String(v).trim() : '';
@@ -684,7 +680,6 @@ function renderMonths(row) {
   }
 }
 
-// ── Popup ─────────────────────────────────────────────────────────────────────
 const popup = document.getElementById('dayPopup');
 const QUICK_OPTS = [
   { label: '12  ·  12-hour shift', value: '12' },
@@ -735,7 +730,6 @@ function applyValue(val) {
   closePopup();
   const emp = allEmployeeRows.find(e => e.rowIdx === selectedRowIdx);
   if (emp) { renderMonths(wsData[emp.rowIdx] || []); renderSummary(wsData[emp.rowIdx] || []); }
-  // keep the report in sync if it's already visible
   if (document.getElementById('reportContainer').style.display !== 'none') showReport();
 }
 
@@ -743,7 +737,6 @@ function applyCustom() {
   applyValue(document.getElementById('popupCustom').value.trim() || null);
 }
 
-// ── Inline schedule report ──────────────────────────────────────────────────
 function hideReport() {
   document.getElementById('reportContainer').style.display = 'none';
 }
@@ -751,7 +744,6 @@ function hideReport() {
 function showReport() {
   if (!workbook || selectedRowIdx < 0) return;
 
-  // Apply any pending edits to in-memory data first
   const empRow = (wsData[selectedRowIdx] || []).slice();
   for (const [col0str, val] of Object.entries(editedCells)) {
     empRow[parseInt(col0str)] = val;
@@ -764,19 +756,11 @@ function showReport() {
   const emp = allEmployeeRows.find(e => e.rowIdx === selectedRowIdx);
   const empName = emp ? emp.name : 'Employee';
 
-  // ── Build column list: only the day-value columns (from colDateMap) ──────
-  // Plus the info columns (1-16, 0-based 0-15)
-  const INFO_COLS = 16; // cols 0-15 are name/id/type/skills/etc.
+  const INFO_COLS = 16;
+  const headerRowA = wsData[DATE_ROW_IDX] || [];
+  const headerRowB = wsData[DATE_ROW_IDX + 1] || [];
 
-  // Header rows we want to show: row 9 (col headers, 0-based idx 8) is the main one
-  // We'll show row 8 (day numbers) and row 9 (labels) as the two header rows
-  const headerRowA = wsData[DATE_ROW_IDX] || [];     // row 8 — day numbers
-  const headerRowB = wsData[DATE_ROW_IDX + 1] || []; // row 9 — Name, 3-4ID, Type…
-
-  // Gather all columns we care about: info cols + every day col
   const dayCols = colDateMap.map(cd => cd.col0);
-  // Also include the weekly-sum gap cols (between day blocks) — find them as
-  // cols between day ranges that have a value in row 6 ("Weekly Hours")
   const row6 = wsData[5] || [];
   const weeklyCols = [];
   for (let c = INFO_COLS; c < (wsData[0] || []).length; c++) {
@@ -784,22 +768,19 @@ function showReport() {
     if (v && String(v).toLowerCase().includes('weekly')) weeklyCols.push(c);
   }
 
-  // Final column order: info cols, then interleaved day+weekly cols in file order
   const allCols = [];
   for (let c = 0; c < INFO_COLS; c++) allCols.push(c);
   const schedCols = [...new Set([...dayCols, ...weeklyCols])].sort((a,b) => a-b);
   allCols.push(...schedCols);
 
-  // ── Cell value helper ─────────────────────────────────────────────────────
   function cellVal(rowArr, col) {
     const v = rowArr[col];
     if (v === null || v === undefined) return '';
     const s = String(v).trim();
-    if (s.startsWith('=')) return ''; // skip formulas
+    if (s.startsWith('=')) return '';
     return s;
   }
 
-  // ── Color coding for day cells ────────────────────────────────────────────
   function cellStyle(col, rowArr) {
     if (col < INFO_COLS) return '';
     if (weeklyCols.includes(col)) return 'background:#f0f4ff;font-style:italic;color:#555;';
@@ -813,16 +794,11 @@ function showReport() {
     return 'background:#f9fafb;color:#374151;';
   }
 
-  // ── Figure out which col belongs to which month (for month header row) ───
   function monthForCol(col) {
     for (const ms of MONTH_STARTS) {
-      const daysInMonth = new Date(ms.year, ms.month + 1, 0).getDate();
-      const monthDayCols = colDateMap
-        .filter(cd => cd.monthName === ms.name)
-        .map(cd => cd.col0);
+      const monthDayCols = colDateMap.filter(cd => cd.monthName === ms.name).map(cd => cd.col0);
       if (monthDayCols.includes(col)) return ms.name;
       if (weeklyCols.includes(col)) {
-        // assign to nearest preceding month
         const prev = colDateMap.filter(cd => cd.col0 < col);
         if (prev.length) return prev[prev.length-1].monthName;
       }
@@ -830,19 +806,17 @@ function showReport() {
     return '';
   }
 
-  // ── Month colors (one per month, cycles if >4) ───────────────────────────
   const MONTH_COLORS = [
-    { bg: '#1d4ed8', light: '#dbeafe', border: '#93c5fd' }, // blue
-    { bg: '#065f46', light: '#d1fae5', border: '#6ee7b7' }, // green
-    { bg: '#7c2d12', light: '#ffedd5', border: '#fdba74' }, // orange
-    { bg: '#4c1d95', light: '#ede9fe', border: '#c4b5fd' }, // purple
+    { bg: '#1d4ed8', light: '#dbeafe', border: '#93c5fd' },
+    { bg: '#065f46', light: '#d1fae5', border: '#6ee7b7' },
+    { bg: '#7c2d12', light: '#ffedd5', border: '#fdba74' },
+    { bg: '#4c1d95', light: '#ede9fe', border: '#c4b5fd' },
   ];
   const monthColorMap = {};
   MONTH_STARTS.forEach((ms, i) => {
     monthColorMap[ms.name] = MONTH_COLORS[i % MONTH_COLORS.length];
   });
 
-  // ── Build month span header ───────────────────────────────────────────────
   const monthSpans = [];
   let lastMonth = null, spanCount = 0;
   for (let i = INFO_COLS; i < allCols.length; i++) {
@@ -854,21 +828,14 @@ function showReport() {
   }
   if (lastMonth) monthSpans.push({ name: lastMonth, count: spanCount });
 
-  // ── Build a col -> weekIndex map so we can alternate week shading ─────────
-  // weeklyCols act as week boundaries — each one starts a new week counter
   const colWeekIdx = {};
   let weekIdx = 0;
   for (let i = INFO_COLS; i < allCols.length; i++) {
     const c = allCols[i];
-    if (weeklyCols.includes(c)) {
-      colWeekIdx[c] = weekIdx; // the summary col gets same index as its week
-      weekIdx++;               // next day cols start a new week
-    } else {
-      colWeekIdx[c] = weekIdx;
-    }
+    if (weeklyCols.includes(c)) { colWeekIdx[c] = weekIdx; weekIdx++; }
+    else { colWeekIdx[c] = weekIdx; }
   }
 
-  // ── DOW label for day cols ────────────────────────────────────────────────
   const DOW = ['Su','Mo','Tu','We','Th','Fr','Sa'];
   function dowForCol(col) {
     const cd = colDateMap.find(c => c.col0 === col);
@@ -879,7 +846,6 @@ function showReport() {
     return cd ? (cd.dow === 0 || cd.dow === 6) : false;
   }
 
-  // ── Generate HTML ─────────────────────────────────────────────────────────
   function th(content, extra='', style='') {
     return `<th ${extra} style="padding:5px 7px;border:1px solid #d1d5db;white-space:nowrap;font-size:11px;${style}">${content}</th>`;
   }
@@ -887,18 +853,16 @@ function showReport() {
     return `<td style="padding:4px 6px;border:1px solid #e5e7eb;text-align:center;font-size:11px;${style}">${content}</td>`;
   }
 
-  // Row 1: month spans — each month its own color
+  const LABEL_WEEK_BG = ['#ffffff', '#e2e8f0'];
+  const LABEL_WEEK_TEXT = ['#1e293b', '#1e293b'];
+  const WEEK_TINTS = ['#ffffff', '#f1f5f9'];
+
   let monthHeaderRow = `<tr><th colspan="${INFO_COLS}" style="padding:5px 8px;border:1px solid #d1d5db;background:#1e3a5f;color:#fff;font-size:12px;text-align:center;font-weight:700;">Employee Info</th>`;
   for (const ms of monthSpans) {
     const mc = monthColorMap[ms.name] || MONTH_COLORS[0];
     monthHeaderRow += `<th colspan="${ms.count}" style="padding:6px 8px;border:1px solid rgba(0,0,0,0.15);background:${mc.bg};color:#fff;font-size:12px;text-align:center;font-weight:700;letter-spacing:0.03em;">${ms.name}</th>`;
   }
   monthHeaderRow += '</tr>';
-
-  // Row 2: col labels — alternating white/gray by week, dark text
-  // Even weeks = white, odd weeks = light gray
-  const LABEL_WEEK_BG = ['#ffffff', '#e2e8f0']; // even / odd week — all days same shade
-  const LABEL_WEEK_TEXT = ['#1e293b', '#1e293b'];
 
   let labelRow = '<tr>';
   for (let i = 0; i < allCols.length; i++) {
@@ -913,26 +877,18 @@ function showReport() {
       const bg   = LABEL_WEEK_BG[wi % 2];
       const text = LABEL_WEEK_TEXT[wi % 2];
       if (weeklyCols.includes(c)) {
-        // Weekly Hours col: use the month color so it stands out as a divider
         labelRow += th('Wk<br>Hrs', '', `background:${mc.bg};color:#fff;text-align:center;min-width:34px;font-style:italic;`);
       } else {
         const dayNum = cellVal(headerRowA, c);
         const dow = dowForCol(c);
-        const wknd = isWeekend(c);
-        // Weekends get a slightly deeper shade of the same tint
-        const finalBg = bg; // weekends same shade as rest of week
         labelRow += th(
           `${dayNum}<br><span style="font-weight:400;opacity:0.6;">${dow}</span>`,
-          '', `background:${finalBg};color:${text};text-align:center;min-width:28px;border-top:3px solid ${mc.bg};`
+          '', `background:${bg};color:${text};text-align:center;min-width:28px;border-top:3px solid ${mc.bg};`
         );
       }
     }
   }
   labelRow += '</tr>';
-
-  // Row 3: data — week-alternating background tints, value colors on top
-  // Week even = very light, week odd = slightly tinted
-  const WEEK_TINTS = ['#ffffff', '#f1f5f9']; // even / odd week base bg
 
   let dataRow = '<tr>';
   for (let i = 0; i < allCols.length; i++) {
@@ -942,70 +898,44 @@ function showReport() {
       const bold = c === 0 ? 'font-weight:700;' : '';
       dataRow += td(v, `text-align:left;${bold}background:#f8faff;`);
     } else {
-      // Start with week-alternating base, then overlay value color if set
       const wi = colWeekIdx[c] ?? 0;
       const weekBase = WEEK_TINTS[wi % 2];
       let style = cellStyle(c, empRow);
-      // If cellStyle returns a plain empty-cell bg, substitute the week tint instead
-      if (style === 'background:#fff;' || style === '') {
-        style = `background:${weekBase};`;
-      }
+      if (style === 'background:#fff;' || style === '') style = `background:${weekBase};`;
       dataRow += td(v, style);
     }
   }
   dataRow += '</tr>';
 
-  const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Schedule — ${empName}</title>
-<style>
-  body { font-family: Arial, sans-serif; padding: 24px; background: #f9fafb; color: #111; }
-  h2 { font-size: 16px; margin-bottom: 4px; color: #1e3a5f; }
-  .meta { font-size: 12px; color: #6b7280; margin-bottom: 16px; }
-  .table-wrap { overflow-x: auto; }
-  table { border-collapse: collapse; font-size: 11px; }
-  .legend { display: flex; gap: 16px; margin-top: 14px; flex-wrap: wrap; }
-  .leg { display: flex; align-items: center; gap: 5px; font-size: 11px; color: #555; }
-  .leg-dot { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
-  @media print { body { padding: 8px; } }
-</style>
-</head>
-<body>
-<h2>Schedule Report — ${empName}</h2>
-<div class="meta">
-  ${emp ? `ID: ${emp.id || '—'} &nbsp;·&nbsp; Type: ${emp.type || '—'} &nbsp;·&nbsp;` : ''}
-  Period: ${MONTH_STARTS.map(m=>m.name).join(', ')} &nbsp;·&nbsp;
-  Generated: ${new Date().toLocaleDateString('en-US', {month:'long',day:'numeric',year:'numeric'})}
-</div>
-<div class="table-wrap">
-<table>
-  <thead>${monthHeaderRow}${labelRow}</thead>
-  <tbody>${dataRow}</tbody>
-</table>
-</div>
-<div class="legend">
-  <span class="leg"><span class="leg-dot" style="background:#e8f0fe;border:1px solid #93c5fd;"></span>Shift hours (8/12)</span>
-  <span class="leg"><span class="leg-dot" style="background:#fff4f0;border:1px solid #ffc9b0;"></span>OFF</span>
-  <span class="leg"><span class="leg-dot" style="background:#fff8e1;border:1px solid #fcd34d;"></span>PTO</span>
-  <span class="leg"><span class="leg-dot" style="background:#f3f4f6;border:1px solid #d1d5db;"></span>OOO</span>
-  <span class="leg"><span class="leg-dot" style="background:#fdf4ff;border:1px solid #d8b4fe;"></span>ADM</span>
-  <span class="leg"><span class="leg-dot" style="background:#f0f4ff;border:1px solid #a5b4fc;"></span>Weekly Hours</span>
-</div>
-</body>
-</html>`;
+  const inner = `
+    <h2 style="font-size:13px;font-weight:700;margin-bottom:3px;color:#1e3a5f;">Schedule Report — ${empName}</h2>
+    <div style="font-size:11px;color:#6b7280;margin-bottom:10px;">
+      ${emp ? `ID: ${emp.id || '—'} &nbsp;·&nbsp; Type: ${emp.type || '—'} &nbsp;·&nbsp;` : ''}
+      Period: ${MONTH_STARTS.map(m=>m.name).join(', ')} &nbsp;·&nbsp;
+      Generated: ${new Date().toLocaleDateString('en-US', {month:'long',day:'numeric',year:'numeric'})}
+    </div>
+    <div style="overflow-x:auto;">
+      <table style="border-collapse:collapse;font-size:11px;">
+        <thead>${monthHeaderRow}${labelRow}</thead>
+        <tbody>${dataRow}</tbody>
+      </table>
+    </div>
+    <div style="display:flex;gap:12px;margin-top:12px;flex-wrap:wrap;">
+      <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:#555;"><span style="width:11px;height:11px;border-radius:3px;background:#e8f0fe;border:1px solid #93c5fd;display:inline-block;"></span>Shift hours</span>
+      <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:#555;"><span style="width:11px;height:11px;border-radius:3px;background:#fff4f0;border:1px solid #ffc9b0;display:inline-block;"></span>OFF</span>
+      <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:#555;"><span style="width:11px;height:11px;border-radius:3px;background:#fff8e1;border:1px solid #fcd34d;display:inline-block;"></span>PTO</span>
+      <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:#555;"><span style="width:11px;height:11px;border-radius:3px;background:#f3f4f6;border:1px solid #d1d5db;display:inline-block;"></span>OOO</span>
+      <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:#555;"><span style="width:11px;height:11px;border-radius:3px;background:#fdf4ff;border:1px solid #d8b4fe;display:inline-block;"></span>ADM</span>
+      <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:#555;"><span style="width:11px;height:11px;border-radius:3px;background:#f0f4ff;border:1px solid #a5b4fc;display:inline-block;"></span>Weekly Hours</span>
+    </div>
+  `;
 
-  // Inject the table portion into the page (strip the outer HTML shell)
-  const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/);
-  const inner = bodyMatch ? bodyMatch[1] : html;
   document.getElementById('reportTable').innerHTML = inner;
   const container = document.getElementById('reportContainer');
   container.style.display = 'block';
   container.scrollIntoView({ behavior: 'smooth', block: 'start' });
   showToast('✓ Table updated');
 }
-
 
 function resetAll() {
   workbook = null; wsData = []; selectedRowIdx = -1;
