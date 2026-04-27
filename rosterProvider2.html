@@ -504,41 +504,58 @@
         const a = document.createElement('a');
         a.href = url; a.download = outputFilename; a.click();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }).catch(function(err) {
+        showError('Failed to build the output file. Please try uploading a different file.', true);
+        console.error(err);
       });
   }
 
   // In-person: export all rows, keeping Custom Fields column
   function downloadInPerson() {
-    if (cleanedData.length <= 1) { showError('No data rows found.'); return; }
-    buildXlsx(cleanedData);
+    try {
+      if (!cleanedData || cleanedData.length <= 1) {
+        showError('No data rows found in this file. Please try a different file.', true); return;
+      }
+      buildXlsx(cleanedData);
+    } catch(err) {
+      showError('Something went wrong while generating the file. Please try uploading a different file.', true);
+      console.error(err);
+    }
   }
 
   // Virtual: filter by selected facility, drop Custom Fields column from output
   function downloadFile() {
-    const selected = new Set(getSelectedOptions());
-    if (selected.size === 0) return;
-    const headerRow = cleanedData[0];
+    try {
+      const selected = new Set(getSelectedOptions());
+      if (selected.size === 0) return;
+      const headerRow = cleanedData[0];
 
-    const dropCols = new Set();
-    if (customFieldColIndex !== -1) dropCols.add(customFieldColIndex);
+      const dropCols = new Set();
+      if (customFieldColIndex !== -1) dropCols.add(customFieldColIndex);
 
-    const finalData = [];
-    finalData.push(headerRow.filter((_, i) => !dropCols.has(i)));
-    for (let r = 1; r < cleanedData.length; r++) {
-      const row = cleanedData[r];
-      const cfVal = (row[customFieldColIndex] !== null && row[customFieldColIndex] !== undefined)
-        ? String(row[customFieldColIndex]).trim() : '(blank)';
-      if (selected.has(cfVal)) finalData.push(row.filter((_, i) => !dropCols.has(i)));
+      const finalData = [];
+      finalData.push(headerRow.filter((_, i) => !dropCols.has(i)));
+      for (let r = 1; r < cleanedData.length; r++) {
+        const row = cleanedData[r];
+        const cfVal = (row[customFieldColIndex] !== null && row[customFieldColIndex] !== undefined)
+          ? String(row[customFieldColIndex]).trim() : '(blank)';
+        if (selected.has(cfVal)) finalData.push(row.filter((_, i) => !dropCols.has(i)));
+      }
+      if (finalData.length <= 1) {
+        showError('No rows matched the selected filters. Please try a different file or selection.', true); return;
+      }
+      buildXlsx(finalData);
+    } catch(err) {
+      showError('Something went wrong while generating the file. Please try uploading a different file.', true);
+      console.error(err);
     }
-    if (finalData.length <= 1) { showError('No rows matched the selected filters.'); return; }
-    buildXlsx(finalData);
   }
 
-
-
-  function showError(msg) {
+  function showError(msg, showRetry) {
     const el = document.getElementById('error-msg');
-    el.textContent = msg; el.style.display = 'block';
+    el.innerHTML = escapeHtml(msg)
+      + (showRetry ? ' <a href="#" onclick="resetTool();return false;" style="color:#a32d2d;font-weight:500;white-space:nowrap;">Try a different file →</a>' : '');
+    el.style.display = 'block';
   }
 
   function resetTool() {
