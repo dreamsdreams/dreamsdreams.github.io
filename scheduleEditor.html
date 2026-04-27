@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Schedule Viewer</title>
+<title>Schedule Editor</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -254,6 +254,19 @@
   .cal-day.work .day-val { color: #fff; }
   .cal-day.off .day-val { color: var(--off-color); font-weight: 700; }
 
+  /* REPORT TABLE */
+  #reportTable table { border-collapse: collapse; font-size: 11px; width: 100%; }
+  #reportTable th, #reportTable td { padding: 4px 7px; border: 1px solid #e5e7eb; white-space: nowrap; }
+  #reportTable thead tr:first-child th { background: #1e3a5f; color: #fff; font-size: 11px; text-align: center; }
+  #reportTable thead tr:last-child th { background: #374151; color: #fff; font-size: 11px; text-align: center; }
+  #reportTable tbody td { text-align: center; font-size: 11px; }
+  #reportTable h2 { font-size: 13px; font-weight: 700; margin-bottom: 3px; color: var(--text); }
+  #reportTable .meta { font-size: 11px; color: var(--text-muted); margin-bottom: 10px; }
+  #reportTable .legend { display: flex; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
+  #reportTable .leg { display: flex; align-items: center; gap: 5px; font-size: 11px; color: #555; }
+  #reportTable .leg-dot { width: 11px; height: 11px; border-radius: 3px; flex-shrink: 0; }
+  #reportTable .table-wrap { overflow-x: auto; }
+
   /* POPUP */
   .day-popup {
     position: fixed;
@@ -391,8 +404,17 @@
   <div id="calendarContainer"></div>
 
   <div class="action-bar">
-    <button class="btn btn-primary" onclick="downloadReport()">📄 Download Schedule Report</button>
+    <button class="btn btn-primary" onclick="showReport()">📄 View Schedule Table</button>
     <button class="btn btn-ghost" onclick="resetAll()">← Load a different file</button>
+  </div>
+
+  <!-- Inline report table -->
+  <div id="reportContainer" style="display:none; margin-top:1.5rem;">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem;">
+      <div style="font-size:0.82rem; font-weight:600; color:var(--text);">Schedule Table</div>
+      <button class="btn btn-ghost" style="font-size:0.75rem; padding:0.35rem 0.8rem;" onclick="hideReport()">Hide table</button>
+    </div>
+    <div id="reportTable" style="overflow-x:auto; border-radius:8px; border:1px solid var(--border);"></div>
   </div>
 </div>
 
@@ -560,6 +582,8 @@ function selectEmployee(emp) {
   editedCells = {};
   renderRowList();
   buildCalendar(emp);
+  document.getElementById('reportContainer').style.display = 'none';
+  document.getElementById('reportTable').innerHTML = '';
   setCard('step2', 'done');
   setCard('step3', 'active');
   document.getElementById('step3').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -711,14 +735,20 @@ function applyValue(val) {
   closePopup();
   const emp = allEmployeeRows.find(e => e.rowIdx === selectedRowIdx);
   if (emp) { renderMonths(wsData[emp.rowIdx] || []); renderSummary(wsData[emp.rowIdx] || []); }
+  // keep the report in sync if it's already visible
+  if (document.getElementById('reportContainer').style.display !== 'none') showReport();
 }
 
 function applyCustom() {
   applyValue(document.getElementById('popupCustom').value.trim() || null);
 }
 
-// ── Download HTML report ─────────────────────────────────────────────────────
-function downloadReport() {
+// ── Inline schedule report ──────────────────────────────────────────────────
+function hideReport() {
+  document.getElementById('reportContainer').style.display = 'none';
+}
+
+function showReport() {
   if (!workbook || selectedRowIdx < 0) return;
 
   // Apply any pending edits to in-memory data first
@@ -914,16 +944,14 @@ function downloadReport() {
 </body>
 </html>`;
 
-  const blob = new Blob([html], { type: 'text/html' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = empName.replace(/[^\w\s-]/g,'').trim().replace(/\s+/g,'_') + '_schedule.html';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(a.href);
-
-  showToast('✓ Report downloaded — open in any browser or print to PDF');
+  // Inject the table portion into the page (strip the outer HTML shell)
+  const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/);
+  const inner = bodyMatch ? bodyMatch[1] : html;
+  document.getElementById('reportTable').innerHTML = inner;
+  const container = document.getElementById('reportContainer');
+  container.style.display = 'block';
+  container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  showToast('✓ Table updated');
 }
 
 
