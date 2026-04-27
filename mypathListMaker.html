@@ -19,6 +19,15 @@
       padding: 3rem 1rem;
     }
 
+    .back-btn {
+      position: fixed; top: 1rem; left: 1rem;
+      font-family: inherit; font-size: 12px; color: #888;
+      background: #fff; border: 0.5px solid rgba(0,0,0,0.15);
+      border-radius: 6px; padding: 4px 9px; cursor: pointer;
+      text-decoration: none; transition: background 0.12s, color 0.12s;
+    }
+    .back-btn:hover { background: #f0f0ee; color: #1a1a18; }
+
     .card {
       background: #ffffff;
       border-radius: 16px;
@@ -28,131 +37,51 @@
       max-width: 600px;
     }
 
-    h1 {
-      font-size: 20px;
-      font-weight: 500;
-      margin-bottom: 0.25rem;
-      color: #1a1a18;
-    }
-
-    .subtitle {
-      font-size: 14px;
-      color: #666;
-      margin-bottom: 1.5rem;
-    }
+    h1 { font-size: 20px; font-weight: 500; margin-bottom: 0.25rem; color: #1a1a18; }
+    .subtitle { font-size: 14px; color: #666; margin-bottom: 1.5rem; }
 
     #drop-zone {
-      border: 1.5px dashed #bbb;
-      border-radius: 12px;
-      padding: 2.5rem 1.5rem;
-      text-align: center;
-      cursor: pointer;
-      transition: background 0.15s, border-color 0.15s;
+      border: 1.5px dashed #bbb; border-radius: 12px; padding: 2.5rem 1.5rem;
+      text-align: center; cursor: pointer; transition: background 0.15s, border-color 0.15s;
     }
+    #drop-zone:hover, #drop-zone.dragover { background: #f5f5f3; border-color: #888; }
+    .drop-icon { font-size: 32px; margin-bottom: 0.5rem; line-height: 1; }
+    .drop-title { font-size: 15px; font-weight: 500; margin-bottom: 4px; }
+    .drop-hint { font-size: 13px; color: #888; }
 
-    #drop-zone:hover, #drop-zone.dragover {
-      background: #f5f5f3;
-      border-color: #888;
-    }
-
-    .drop-icon {
-      font-size: 32px;
-      margin-bottom: 0.5rem;
-      line-height: 1;
-    }
-
-    .drop-title {
-      font-size: 15px;
-      font-weight: 500;
-      margin-bottom: 4px;
-    }
-
-    .drop-hint {
-      font-size: 13px;
-      color: #888;
-    }
-
-    #result-area {
-      display: none;
-      margin-top: 1.5rem;
-    }
-
+    #result-area { display: none; margin-top: 1.5rem; }
     .result-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-bottom: 0.75rem;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 8px; margin-bottom: 0.75rem;
     }
-
-    .result-title {
-      font-size: 14px;
-      font-weight: 500;
-    }
-
-    .result-count {
-      font-size: 13px;
-      color: #888;
-      margin-left: 8px;
-    }
-
-    .btn-group {
-      display: flex;
-      gap: 8px;
-    }
+    .result-title { font-size: 14px; font-weight: 500; }
+    .result-count { font-size: 13px; color: #888; margin-left: 8px; }
+    .btn-group { display: flex; gap: 8px; }
 
     button {
-      font-size: 13px;
-      padding: 6px 14px;
-      border-radius: 8px;
-      border: 0.5px solid rgba(0,0,0,0.2);
-      background: transparent;
-      color: #1a1a18;
-      cursor: pointer;
-      transition: background 0.12s;
-      font-family: inherit;
+      font-size: 13px; padding: 6px 14px; border-radius: 8px;
+      border: 0.5px solid rgba(0,0,0,0.2); background: transparent;
+      color: #1a1a18; cursor: pointer; transition: background 0.12s; font-family: inherit;
     }
-
     button:hover { background: #f0f0ee; }
     button:active { transform: scale(0.98); }
 
     #list-container {
-      width: 100%;
-      min-height: 300px;
-      background: #f9f9f7;
-      border-radius: 8px;
-      border: 0.5px solid rgba(0,0,0,0.1);
-      font-size: 14px;
-      font-family: inherit;
-      color: #1a1a18;
-      padding: 12px 14px;
-      resize: vertical;
-      outline: none;
-      line-height: 1.6;
+      width: 100%; min-height: 300px; background: #f9f9f7; border-radius: 8px;
+      border: 0.5px solid rgba(0,0,0,0.1); font-size: 14px; font-family: inherit;
+      color: #1a1a18; padding: 12px 14px; resize: vertical; outline: none; line-height: 1.6;
     }
 
     #error-msg {
-      display: none;
-      color: #a32d2d;
-      font-size: 13px;
-      margin-top: 0.75rem;
-      padding: 10px 14px;
-      background: #fcebeb;
-      border-radius: 8px;
+      display: none; color: #a32d2d; font-size: 13px; margin-top: 0.75rem;
+      padding: 10px 14px; background: #fcebeb; border-radius: 8px;
     }
 
-    .reset-btn {
-      display: none;
-      margin-top: 1rem;
-      width: 100%;
-      text-align: center;
-      font-size: 13px;
-      padding: 8px;
-    }
+    .reset-btn { display: none; margin-top: 1rem; width: 100%; text-align: center; font-size: 13px; padding: 8px; }
   </style>
 </head>
 <body>
+  <a class="back-btn" href="https://www.haydens.cool/">← Home</a>
   <div class="card">
     <div style="background:#f5f5f3;border:0.5px solid rgba(0,0,0,0.1);border-radius:12px;padding:1rem 1.25rem;margin-bottom:1.5rem;">
       <p style="font-size:13px;font-weight:500;color:#888;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:0.75rem;">How to use</p>
@@ -253,14 +182,12 @@
 
     function showResults(values) {
       document.getElementById('result-count').textContent = values.length + ' value' + (values.length !== 1 ? 's' : '') + ' found';
-
       const container = document.getElementById('list-container');
       if (values.length === 0) {
         container.value = 'No values found in column J starting from row 2.';
       } else {
         container.value = values.map(function(v) { return v + ','; }).join('\n');
       }
-
       document.getElementById('result-area').style.display = 'block';
       document.getElementById('reset-btn').style.display = 'block';
     }
