@@ -830,18 +830,43 @@ function showReport() {
     return '';
   }
 
+  // ── Month colors (one per month, cycles if >4) ───────────────────────────
+  const MONTH_COLORS = [
+    { bg: '#1d4ed8', light: '#dbeafe', border: '#93c5fd' }, // blue
+    { bg: '#065f46', light: '#d1fae5', border: '#6ee7b7' }, // green
+    { bg: '#7c2d12', light: '#ffedd5', border: '#fdba74' }, // orange
+    { bg: '#4c1d95', light: '#ede9fe', border: '#c4b5fd' }, // purple
+  ];
+  const monthColorMap = {};
+  MONTH_STARTS.forEach((ms, i) => {
+    monthColorMap[ms.name] = MONTH_COLORS[i % MONTH_COLORS.length];
+  });
+
   // ── Build month span header ───────────────────────────────────────────────
-  // Group consecutive schedule cols by month
-  const monthSpans = []; // [{name, start, count}]
-  let lastMonth = null, spanCount = 0, spanStart = 0;
+  const monthSpans = [];
+  let lastMonth = null, spanCount = 0;
   for (let i = INFO_COLS; i < allCols.length; i++) {
     const mn = monthForCol(allCols[i]);
     if (mn !== lastMonth) {
       if (lastMonth !== null) monthSpans.push({ name: lastMonth, count: spanCount });
-      lastMonth = mn; spanCount = 1; spanStart = i;
+      lastMonth = mn; spanCount = 1;
     } else { spanCount++; }
   }
   if (lastMonth) monthSpans.push({ name: lastMonth, count: spanCount });
+
+  // ── Build a col -> weekIndex map so we can alternate week shading ─────────
+  // weeklyCols act as week boundaries — each one starts a new week counter
+  const colWeekIdx = {};
+  let weekIdx = 0;
+  for (let i = INFO_COLS; i < allCols.length; i++) {
+    const c = allCols[i];
+    if (weeklyCols.includes(c)) {
+      colWeekIdx[c] = weekIdx; // the summary col gets same index as its week
+      weekIdx++;               // next day cols start a new week
+    } else {
+      colWeekIdx[c] = weekIdx;
+    }
+  }
 
   // ── DOW label for day cols ────────────────────────────────────────────────
   const DOW = ['Su','Mo','Tu','We','Th','Fr','Sa'];
@@ -862,34 +887,53 @@ function showReport() {
     return `<td style="padding:4px 6px;border:1px solid #e5e7eb;text-align:center;font-size:11px;${style}">${content}</td>`;
   }
 
-  // Row 1: month spans
-  let monthHeaderRow = `<tr><th colspan="${INFO_COLS}" style="padding:5px 8px;border:1px solid #d1d5db;background:#1e3a5f;color:#fff;font-size:12px;text-align:center;">Employee Info</th>`;
+  // Row 1: month spans — each month its own color
+  let monthHeaderRow = `<tr><th colspan="${INFO_COLS}" style="padding:5px 8px;border:1px solid #d1d5db;background:#1e3a5f;color:#fff;font-size:12px;text-align:center;font-weight:700;">Employee Info</th>`;
   for (const ms of monthSpans) {
-    monthHeaderRow += `<th colspan="${ms.count}" style="padding:5px 8px;border:1px solid #d1d5db;background:#1e3a5f;color:#fff;font-size:12px;text-align:center;">${ms.name}</th>`;
+    const mc = monthColorMap[ms.name] || MONTH_COLORS[0];
+    monthHeaderRow += `<th colspan="${ms.count}" style="padding:6px 8px;border:1px solid rgba(0,0,0,0.15);background:${mc.bg};color:#fff;font-size:12px;text-align:center;font-weight:700;letter-spacing:0.03em;">${ms.name}</th>`;
   }
   monthHeaderRow += '</tr>';
 
-  // Row 2: col labels (Name, ID, Type… then day numbers / "Wk Hrs")
+  // Row 2: col labels — alternating white/gray by week, dark text
+  // Even weeks = white, odd weeks = light gray
+  const LABEL_WEEK_BG = ['#ffffff', '#e2e8f0']; // even / odd week — all days same shade
+  const LABEL_WEEK_TEXT = ['#1e293b', '#1e293b'];
+
   let labelRow = '<tr>';
   for (let i = 0; i < allCols.length; i++) {
     const c = allCols[i];
     if (c < INFO_COLS) {
       const label = cellVal(headerRowB, c) || '';
       labelRow += th(label, '', 'background:#374151;color:#fff;text-align:center;');
-    } else if (weeklyCols.includes(c)) {
-      labelRow += th('Wk<br>Hrs', '', 'background:#3b4f6b;color:#fff;text-align:center;min-width:32px;');
     } else {
-      const dayNum = cellVal(headerRowA, c);
-      const dow = dowForCol(c);
-      const wknd = isWeekend(c);
-      const bg = wknd ? '#4a5568' : '#374151';
-      labelRow += th(`${dayNum}<br><span style="font-weight:400;opacity:0.75;">${dow}</span>`,
-        '', `background:${bg};color:#fff;text-align:center;min-width:28px;`);
+      const mn = monthForCol(c);
+      const mc = monthColorMap[mn] || MONTH_COLORS[0];
+      const wi = colWeekIdx[c] ?? 0;
+      const bg   = LABEL_WEEK_BG[wi % 2];
+      const text = LABEL_WEEK_TEXT[wi % 2];
+      if (weeklyCols.includes(c)) {
+        // Weekly Hours col: use the month color so it stands out as a divider
+        labelRow += th('Wk<br>Hrs', '', `background:${mc.bg};color:#fff;text-align:center;min-width:34px;font-style:italic;`);
+      } else {
+        const dayNum = cellVal(headerRowA, c);
+        const dow = dowForCol(c);
+        const wknd = isWeekend(c);
+        // Weekends get a slightly deeper shade of the same tint
+        const finalBg = bg; // weekends same shade as rest of week
+        labelRow += th(
+          `${dayNum}<br><span style="font-weight:400;opacity:0.6;">${dow}</span>`,
+          '', `background:${finalBg};color:${text};text-align:center;min-width:28px;border-top:3px solid ${mc.bg};`
+        );
+      }
     }
   }
   labelRow += '</tr>';
 
-  // Row 3: the employee's actual data
+  // Row 3: data — week-alternating background tints, value colors on top
+  // Week even = very light, week odd = slightly tinted
+  const WEEK_TINTS = ['#ffffff', '#f1f5f9']; // even / odd week base bg
+
   let dataRow = '<tr>';
   for (let i = 0; i < allCols.length; i++) {
     const c = allCols[i];
@@ -898,7 +942,15 @@ function showReport() {
       const bold = c === 0 ? 'font-weight:700;' : '';
       dataRow += td(v, `text-align:left;${bold}background:#f8faff;`);
     } else {
-      dataRow += td(v, cellStyle(c, empRow));
+      // Start with week-alternating base, then overlay value color if set
+      const wi = colWeekIdx[c] ?? 0;
+      const weekBase = WEEK_TINTS[wi % 2];
+      let style = cellStyle(c, empRow);
+      // If cellStyle returns a plain empty-cell bg, substitute the week tint instead
+      if (style === 'background:#fff;' || style === '') {
+        style = `background:${weekBase};`;
+      }
+      dataRow += td(v, style);
     }
   }
   dataRow += '</tr>';
