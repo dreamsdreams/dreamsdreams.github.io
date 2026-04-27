@@ -5,27 +5,33 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Schedule Editor</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
   :root {
-    --bg: #0e0f14;
-    --surface: #161820;
-    --surface2: #1e2029;
-    --border: #2a2d3a;
-    --accent: #7c6af7;
-    --accent2: #4ecdc4;
-    --work: #7c6af7;
-    --off: #1e2029;
-    --off-text: #4a4d5e;
-    --work-text: #fff;
-    --text: #e8e9f0;
-    --muted: #6b6e82;
-    --weekend: #12141a;
-    --holiday: #1a1420;
-    --holiday-accent: #c084fc;
-    --danger: #f87171;
-    --success: #4ecdc4;
+    --bg: #f5f6f8;
+    --white: #ffffff;
+    --border: #e4e6ea;
+    --border-light: #f0f1f4;
+    --text: #1a1d23;
+    --text-muted: #8a8f9c;
+    --accent: #4f6ef7;
+    --accent-light: #eef0fe;
+    --accent-hover: #3a57e8;
+    --success: #22c55e;
+    --danger: #ef4444;
+    --sat-bg: #f0f4ff;
+    --sat-border: #d6e0ff;
+    --sat-text: #6b8af7;
+    --sun-bg: #f0f4ff;
+    --sun-border: #d6e0ff;
+    --sun-text: #6b8af7;
+    --off-bg: #fff4f0;
+    --off-border: #ffc9b0;
+    --off-color: #e8622a;
+    --off-work-bg: #e8622a;
+    --off-work-border: #c94e1c;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -33,456 +39,302 @@
   body {
     background: var(--bg);
     color: var(--text);
-    font-family: 'Syne', sans-serif;
+    font-family: 'Inter', sans-serif;
     min-height: 100vh;
     padding: 2rem;
-    overflow-x: hidden;
+    font-size: 14px;
+    line-height: 1.5;
   }
 
-  /* HEADER */
   .header {
+    max-width: 860px;
+    margin: 0 auto 1.75rem;
     display: flex;
     align-items: center;
-    gap: 1rem;
-    margin-bottom: 2.5rem;
+    gap: 0.8rem;
   }
-  .header-icon {
-    width: 44px;
-    height: 44px;
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.4rem;
-    flex-shrink: 0;
-  }
-  h1 {
-    font-size: 1.6rem;
-    font-weight: 800;
-    letter-spacing: -0.03em;
-    background: linear-gradient(135deg, #e8e9f0, #7c6af7);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-  .subtitle {
-    font-size: 0.78rem;
-    color: var(--muted);
-    font-family: 'DM Mono', monospace;
-    margin-top: 2px;
-  }
+  .header-icon { font-size: 1.4rem; line-height: 1; }
+  h1 { font-size: 1.25rem; font-weight: 700; letter-spacing: -0.02em; }
+  .subtitle { font-size: 0.78rem; color: var(--text-muted); margin-top: 1px; }
 
-  /* STEP PANELS */
-  .step {
-    background: var(--surface);
+  .card {
+    background: var(--white);
     border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 1.6rem;
-    margin-bottom: 1.25rem;
-    transition: border-color 0.2s;
+    border-radius: 12px;
+    padding: 1.4rem 1.5rem;
+    margin: 0 auto 1rem;
+    max-width: 860px;
   }
-  .step.active { border-color: var(--accent); }
-  .step.done { border-color: #2a3a2e; }
-  .step-header {
+  .card.active { box-shadow: 0 0 0 2px rgba(79,110,247,0.35); border-color: var(--accent); }
+  .card.done { border-color: #bbf7d0; }
+
+  .card-header {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.6rem;
     margin-bottom: 1rem;
   }
-  .step-num {
-    width: 28px; height: 28px;
+  .step-badge {
+    width: 22px; height: 22px;
     border-radius: 50%;
     background: var(--accent);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 0.75rem;
+    color: #fff;
+    font-size: 0.68rem;
     font-weight: 700;
-    font-family: 'DM Mono', monospace;
+    display: flex; align-items: center; justify-content: center;
     flex-shrink: 0;
   }
-  .step.done .step-num { background: var(--success); }
-  .step-title {
-    font-size: 1rem;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-  }
+  .card.done .step-badge { background: var(--success); }
+  .card-title { font-size: 0.92rem; font-weight: 600; }
 
   /* FILE DROP */
   .drop-zone {
-    border: 2px dashed var(--border);
+    border: 1.5px dashed var(--border);
     border-radius: 10px;
-    padding: 2.5rem;
+    padding: 2.25rem;
     text-align: center;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.18s;
     position: relative;
+    background: var(--bg);
   }
   .drop-zone:hover, .drop-zone.dragover {
     border-color: var(--accent);
-    background: rgba(124,106,247,0.05);
+    background: var(--accent-light);
   }
   .drop-zone input[type="file"] {
-    position: absolute;
-    inset: 0;
-    opacity: 0;
-    cursor: pointer;
-    width: 100%;
-    height: 100%;
+    position: absolute; inset: 0;
+    opacity: 0; cursor: pointer; width: 100%; height: 100%;
   }
-  .drop-icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
-  .drop-label { font-size: 0.9rem; color: var(--muted); }
-  .drop-label strong { color: var(--accent); }
+  .drop-icon { font-size: 1.9rem; margin-bottom: 0.5rem; }
+  .drop-label { font-size: 0.86rem; color: var(--text-muted); }
+  .drop-label strong { color: var(--accent); font-weight: 600; }
 
-  /* ROW SELECTOR */
-  .row-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    max-height: 380px;
-    overflow-y: auto;
-    padding-right: 4px;
+  /* EMPLOYEE LIST */
+  .search-box {
+    width: 100%;
+    padding: 0.58rem 0.85rem;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.84rem;
+    margin-bottom: 0.65rem;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
   }
-  .row-list::-webkit-scrollbar { width: 6px; }
+  .search-box:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(79,110,247,0.1); }
+  .search-box::placeholder { color: var(--text-muted); }
+
+  .row-list {
+    display: flex; flex-direction: column; gap: 3px;
+    max-height: 340px; overflow-y: auto; padding-right: 2px;
+  }
+  .row-list::-webkit-scrollbar { width: 5px; }
   .row-list::-webkit-scrollbar-track { background: transparent; }
   .row-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
   .row-item {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.7rem 1rem;
-    border-radius: 8px;
-    border: 1px solid var(--border);
+    display: flex; align-items: center; gap: 0.7rem;
+    padding: 0.62rem 0.85rem;
+    border-radius: 7px;
+    border: 1px solid transparent;
     cursor: pointer;
-    transition: all 0.15s;
-    background: var(--surface2);
+    transition: all 0.11s;
+    background: var(--bg);
   }
-  .row-item:hover { border-color: var(--accent); background: rgba(124,106,247,0.06); }
-  .row-item.selected { border-color: var(--accent); background: rgba(124,106,247,0.12); }
-  .row-item-name { font-weight: 600; font-size: 0.9rem; flex: 1; }
-  .row-item-meta { font-family: 'DM Mono', monospace; font-size: 0.72rem; color: var(--muted); }
+  .row-item:hover { background: var(--accent-light); border-color: rgba(79,110,247,0.2); }
+  .row-item.selected { background: var(--accent-light); border-color: var(--accent); }
+  .row-item-name { font-weight: 600; font-size: 0.86rem; flex: 1; }
+  .row-item-meta { font-size: 0.74rem; color: var(--text-muted); }
   .row-item-badge {
-    background: rgba(124,106,247,0.2);
-    color: var(--accent);
-    font-size: 0.68rem;
-    font-family: 'DM Mono', monospace;
-    padding: 2px 8px;
-    border-radius: 4px;
+    background: rgba(79,110,247,0.1); color: var(--accent);
+    font-size: 0.68rem; font-weight: 500;
+    padding: 2px 7px; border-radius: 20px;
   }
 
-  .search-box {
-    width: 100%;
-    padding: 0.65rem 1rem;
-    background: var(--surface2);
-    border: 1px solid var(--border);
+  /* EMPLOYEE BANNER */
+  .emp-banner {
+    display: flex; align-items: center; gap: 0.75rem;
+    padding: 0.8rem 1rem;
+    background: var(--accent-light);
     border-radius: 8px;
-    color: var(--text);
-    font-family: 'DM Mono', monospace;
-    font-size: 0.85rem;
-    margin-bottom: 0.75rem;
-    outline: none;
-    transition: border-color 0.15s;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
   }
-  .search-box:focus { border-color: var(--accent); }
-  .search-box::placeholder { color: var(--muted); }
+  .emp-avatar {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--accent); color: #fff;
+    font-weight: 700; font-size: 0.75rem;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .emp-name { font-size: 0.92rem; font-weight: 600; flex: 1; }
+  .emp-tag {
+    font-size: 0.7rem; padding: 2px 8px; border-radius: 20px;
+    background: rgba(0,0,0,0.06); color: var(--text-muted);
+  }
+
+  /* SUMMARY */
+  .summary-row { display: flex; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap; }
+  .stat-pill {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 0.5rem 0.9rem;
+    display: flex; align-items: center; gap: 0.4rem;
+  }
+  .stat-label { font-size: 0.73rem; color: var(--text-muted); }
+  .stat-val { font-size: 0.92rem; font-weight: 700; }
+
+  /* LEGEND */
+  .legend {
+    display: flex; gap: 1rem; margin-bottom: 0.65rem; flex-wrap: wrap;
+  }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 0.74rem; color: var(--text-muted); }
+  .legend-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+  .legend-hint { font-size: 0.74rem; color: var(--text-muted); margin-bottom: 1.1rem; }
 
   /* CALENDAR */
-  .calendar-wrapper { display: none; }
-  .calendar-wrapper.visible { display: block; }
+  .month-section { margin-bottom: 1.75rem; }
+  .month-title { font-size: 0.86rem; font-weight: 700; margin-bottom: 0.55rem; letter-spacing: -0.01em; }
 
-  .employee-info {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    padding: 1rem 1.2rem;
-    background: rgba(124,106,247,0.08);
-    border: 1px solid rgba(124,106,247,0.3);
-    border-radius: 10px;
-    margin-bottom: 1.5rem;
-    flex-wrap: wrap;
-  }
-  .emp-name { font-size: 1.05rem; font-weight: 700; }
-  .emp-tag {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.72rem;
-    padding: 3px 8px;
-    border-radius: 5px;
-    background: rgba(255,255,255,0.07);
-    color: var(--muted);
-  }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
 
-  .cal-legend {
-    display: flex;
-    gap: 1rem;
-    margin-bottom: 1.25rem;
-    flex-wrap: wrap;
-    font-size: 0.78rem;
-    color: var(--muted);
-    font-family: 'DM Mono', monospace;
-  }
-  .legend-item { display: flex; align-items: center; gap: 6px; }
-  .legend-dot {
-    width: 10px; height: 10px; border-radius: 3px;
-  }
-
-  .month-section { margin-bottom: 2rem; }
-  .month-title {
-    font-size: 0.9rem;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--accent2);
-    margin-bottom: 0.75rem;
-    font-family: 'DM Mono', monospace;
-  }
-
-  .cal-grid {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 4px;
-  }
   .cal-dow {
-    text-align: center;
-    font-family: 'DM Mono', monospace;
-    font-size: 0.65rem;
-    color: var(--muted);
-    padding: 4px 0;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
+    text-align: center; font-size: 0.66rem; font-weight: 600;
+    color: var(--text-muted); padding: 3px 0 7px;
+    text-transform: uppercase; letter-spacing: 0.03em;
   }
+  .cal-dow.sat-h { color: var(--sat-text); }
+  .cal-dow.sun-h { color: var(--sun-text); }
+
   .cal-day {
-    aspect-ratio: 1;
-    border-radius: 8px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    border: 1px solid transparent;
-    transition: all 0.12s;
-    position: relative;
-    user-select: none;
-    min-height: 52px;
-    padding: 4px;
+    border-radius: 8px; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    cursor: pointer; border: 1.5px solid var(--border);
+    transition: transform 0.1s, box-shadow 0.1s, border-color 0.1s;
+    user-select: none; min-height: 54px; padding: 5px 3px;
+    background: var(--white);
   }
-  .cal-day.empty { background: transparent; cursor: default; }
-  .cal-day.weekend {
-    background: var(--weekend);
-    border-color: rgba(255,255,255,0.04);
-  }
-  .cal-day.weekday {
-    background: var(--off);
-    border-color: var(--border);
-  }
-  .cal-day.work {
-    background: linear-gradient(135deg, rgba(124,106,247,0.3), rgba(78,205,196,0.2));
-    border-color: var(--accent);
-  }
-  .cal-day.holiday {
-    background: var(--holiday);
-    border-color: rgba(192,132,252,0.3);
-  }
+  .cal-day.empty { background: transparent; border-color: transparent; cursor: default; pointer-events: none; }
+
+  /* Saturday */
+  .cal-day.sat { background: var(--sat-bg); border-color: var(--sat-border); }
+  /* Sunday */
+  .cal-day.sun { background: var(--sun-bg); border-color: var(--sun-border); }
+  /* Working any day — blue */
+  .cal-day.work { background: var(--accent); border-color: var(--accent-hover); }
+  /* Working weekends — same blue (weekends now match weekdays) */
+  .cal-day.work.sat { background: var(--accent); border-color: var(--accent-hover); }
+  .cal-day.work.sun { background: var(--accent); border-color: var(--accent-hover); }
+  /* OFF — reddish orange */
+  .cal-day.off { background: var(--off-bg); border-color: var(--off-border); }
+  .cal-day.off.sat { background: var(--off-bg); border-color: var(--off-border); }
+  .cal-day.off.sun { background: var(--off-bg); border-color: var(--off-border); }
+
   .cal-day:not(.empty):hover {
-    transform: scale(1.05);
+    transform: translateY(-1px);
+    box-shadow: 0 3px 10px rgba(0,0,0,0.09);
+    border-color: var(--accent);
     z-index: 2;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.4);
   }
-  .cal-day.work:hover { border-color: var(--accent2); }
-  .cal-day.weekday:hover { border-color: var(--accent); background: rgba(124,106,247,0.1); }
+  .cal-day.work:hover { border-color: rgba(255,255,255,0.5); }
+  .cal-day.off:hover { border-color: var(--off-color); }
 
-  .day-num {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.85rem;
-    font-weight: 500;
-    color: var(--muted);
-    line-height: 1;
-  }
-  .cal-day.work .day-num { color: var(--work-text); font-weight: 700; }
+  .day-num { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); line-height: 1; }
+  .cal-day.sat:not(.work):not(.off) .day-num { color: var(--sat-text); }
+  .cal-day.sun:not(.work):not(.off) .day-num { color: var(--sun-text); }
+  .cal-day.work .day-num { color: rgba(255,255,255,0.8); font-weight: 500; }
+  .cal-day.off .day-num { color: var(--off-color); }
+
   .day-val {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.65rem;
-    font-weight: 500;
-    margin-top: 2px;
-    color: var(--accent2);
-    text-align: center;
-    line-height: 1.2;
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    font-size: 0.71rem; font-weight: 700; margin-top: 3px;
+    color: var(--text); text-align: center;
+    max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 2px;
   }
-  .cal-day.weekend .day-val { color: var(--muted); }
-  .work-dot {
-    width: 5px; height: 5px;
-    border-radius: 50%;
-    background: var(--accent2);
-    margin-top: 2px;
-  }
-  .holiday-label {
-    font-size: 0.55rem;
-    color: var(--holiday-accent);
-    font-family: 'DM Mono', monospace;
-  }
+  .cal-day.work .day-val { color: #fff; }
+  .cal-day.off .day-val { color: var(--off-color); font-weight: 700; }
 
-  /* TOOLTIP for day editing */
+  /* POPUP */
   .day-popup {
     position: fixed;
-    background: var(--surface2);
-    border: 1px solid var(--accent);
-    border-radius: 10px;
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 12px;
     padding: 1rem;
     z-index: 1000;
-    min-width: 200px;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+    min-width: 192px;
+    box-shadow: 0 8px 28px rgba(0,0,0,0.11);
     display: none;
   }
   .day-popup.show { display: block; }
-  .popup-title {
-    font-size: 0.85rem;
-    font-weight: 700;
-    margin-bottom: 0.75rem;
-    color: var(--accent2);
-  }
-  .popup-options {
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
-  }
-  .popup-btn {
-    padding: 0.45rem 0.75rem;
-    border-radius: 6px;
-    border: 1px solid var(--border);
-    background: var(--surface);
-    color: var(--text);
-    font-family: 'DM Mono', monospace;
-    font-size: 0.78rem;
-    cursor: pointer;
-    text-align: left;
-    transition: all 0.12s;
-  }
-  .popup-btn:hover { border-color: var(--accent); background: rgba(124,106,247,0.1); }
-  .popup-btn.danger:hover { border-color: var(--danger); color: var(--danger); }
-  .popup-custom {
-    display: flex;
-    gap: 0.4rem;
-    margin-top: 0.5rem;
-  }
-  .popup-input {
-    flex: 1;
-    padding: 0.4rem 0.6rem;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    color: var(--text);
-    font-family: 'DM Mono', monospace;
-    font-size: 0.78rem;
-    outline: none;
-  }
-  .popup-input:focus { border-color: var(--accent); }
-  .popup-apply {
-    padding: 0.4rem 0.75rem;
-    background: var(--accent);
-    border: none;
-    border-radius: 6px;
-    color: #fff;
-    font-size: 0.78rem;
-    cursor: pointer;
-    font-family: 'DM Mono', monospace;
-  }
-  .popup-close {
-    position: absolute;
-    top: 0.5rem;
-    right: 0.75rem;
-    background: none;
-    border: none;
-    color: var(--muted);
-    cursor: pointer;
-    font-size: 1rem;
-  }
+  .popup-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.7rem; }
+  .popup-title { font-size: 0.8rem; font-weight: 600; }
+  .popup-close { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.95rem; padding: 0; line-height: 1; }
+  .popup-close:hover { color: var(--text); }
 
-  /* SUMMARY BAR */
-  .summary-bar {
-    display: flex;
-    gap: 1.5rem;
-    margin-bottom: 1.5rem;
-    flex-wrap: wrap;
+  .popup-options { display: flex; flex-direction: column; gap: 3px; margin-bottom: 0.55rem; }
+  .popup-btn {
+    padding: 0.4rem 0.65rem;
+    border-radius: 6px; border: 1px solid var(--border);
+    background: var(--bg); color: var(--text);
+    font-family: 'Inter', sans-serif; font-size: 0.78rem;
+    cursor: pointer; text-align: left; transition: all 0.1s;
   }
-  .summary-stat {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
+  .popup-btn:hover { background: var(--accent-light); border-color: rgba(79,110,247,0.25); }
+  .popup-btn.is-active { background: var(--accent-light); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+  .popup-btn.danger:hover { background: #fef2f2; border-color: #fca5a5; color: var(--danger); }
+
+  .popup-divider { border: none; border-top: 1px solid var(--border-light); margin: 0.5rem 0; }
+  .popup-custom { display: flex; gap: 5px; }
+  .popup-input {
+    flex: 1; padding: 0.38rem 0.6rem;
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 6px; color: var(--text);
+    font-family: 'Inter', sans-serif; font-size: 0.77rem; outline: none;
   }
-  .stat-label { font-size: 0.68rem; color: var(--muted); font-family: 'DM Mono', monospace; text-transform: uppercase; letter-spacing: 0.08em; }
-  .stat-val { font-size: 1.4rem; font-weight: 800; color: var(--accent); }
+  .popup-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(79,110,247,0.1); }
+  .popup-input::placeholder { color: var(--text-muted); }
+  .popup-apply {
+    padding: 0.38rem 0.7rem; background: var(--accent); border: none;
+    border-radius: 6px; color: #fff; font-size: 0.77rem; font-weight: 600;
+    cursor: pointer; font-family: 'Inter', sans-serif;
+  }
+  .popup-apply:hover { background: var(--accent-hover); }
 
   /* BUTTONS */
   .btn {
-    padding: 0.65rem 1.4rem;
-    border-radius: 8px;
-    border: none;
-    font-family: 'Syne', sans-serif;
-    font-size: 0.88rem;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all 0.15s;
-    letter-spacing: -0.01em;
+    padding: 0.58rem 1.15rem; border-radius: 8px; border: none;
+    font-family: 'Inter', sans-serif; font-size: 0.83rem; font-weight: 600;
+    cursor: pointer; transition: all 0.13s;
   }
-  .btn-primary {
-    background: linear-gradient(135deg, var(--accent), #5b4de0);
-    color: #fff;
-    box-shadow: 0 4px 16px rgba(124,106,247,0.35);
-  }
-  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(124,106,247,0.5); }
-  .btn-secondary {
-    background: var(--surface2);
-    color: var(--text);
-    border: 1px solid var(--border);
-  }
-  .btn-secondary:hover { border-color: var(--accent); }
-  .btn-success {
-    background: linear-gradient(135deg, #4ecdc4, #2eb8ae);
-    color: #fff;
-    box-shadow: 0 4px 16px rgba(78,205,196,0.3);
-  }
-  .btn-success:hover { transform: translateY(-1px); }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: var(--accent-hover); box-shadow: 0 2px 8px rgba(79,110,247,0.3); }
+  .btn-ghost { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
+  .btn-ghost:hover { background: var(--bg); color: var(--text); }
 
-  .action-bar {
-    display: flex;
-    gap: 0.75rem;
-    margin-top: 1.5rem;
-    flex-wrap: wrap;
-  }
+  .action-bar { display: flex; gap: 0.6rem; margin-top: 1.4rem; flex-wrap: wrap; align-items: center; }
 
   .toast {
-    position: fixed;
-    bottom: 2rem;
-    right: 2rem;
-    background: var(--surface2);
-    border: 1px solid var(--success);
-    border-radius: 10px;
-    padding: 0.85rem 1.25rem;
-    font-size: 0.85rem;
-    color: var(--success);
-    font-family: 'DM Mono', monospace;
-    display: none;
-    z-index: 9999;
-    animation: slideIn 0.3s ease;
+    position: fixed; bottom: 1.4rem; right: 1.4rem;
+    background: var(--white); border: 1px solid var(--border);
+    border-left: 3px solid var(--success);
+    border-radius: 8px; padding: 0.7rem 1rem;
+    font-size: 0.81rem; color: var(--text);
+    display: none; z-index: 9999;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.09);
+    animation: slideUp 0.22s ease;
   }
-  @keyframes slideIn {
-    from { transform: translateX(120%); opacity: 0; }
-    to { transform: translateX(0); opacity: 1; }
+  @keyframes slideUp {
+    from { transform: translateY(10px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
   }
 
-  .divider { border: none; border-top: 1px solid var(--border); margin: 1.25rem 0; }
-  
-  .hidden { display: none !important; }
-  
-  /* Responsive */
-  @media (max-width: 600px) {
+  @media (max-width: 560px) {
     body { padding: 1rem; }
     .cal-day { min-height: 40px; }
     .day-num { font-size: 0.7rem; }
-    .day-val { font-size: 0.55rem; }
+    .day-val { font-size: 0.6rem; }
   }
 </style>
 </head>
@@ -492,70 +344,69 @@
   <div class="header-icon">📅</div>
   <div>
     <h1>Schedule Editor</h1>
-    <div class="subtitle">xlsx → calendar → xlsx</div>
+    <div class="subtitle">Load a file · pick an employee · edit their calendar · save back to Excel</div>
   </div>
 </div>
 
-<!-- STEP 1: File Upload -->
-<div class="step active" id="step1">
-  <div class="step-header">
-    <div class="step-num">1</div>
-    <div class="step-title">Load Schedule File</div>
+<!-- Step 1 -->
+<div class="card active" id="step1">
+  <div class="card-header">
+    <div class="step-badge">1</div>
+    <div class="card-title">Upload Schedule File</div>
   </div>
   <div class="drop-zone" id="dropZone">
     <input type="file" id="fileInput" accept=".xlsx,.xls" />
     <div class="drop-icon">📂</div>
-    <div class="drop-label">Drop your <strong>.xlsx</strong> file here, or click to browse</div>
+    <div class="drop-label">Drop your <strong>.xlsx</strong> file here, or <strong>click to browse</strong></div>
   </div>
 </div>
 
-<!-- STEP 2: Row Select -->
-<div class="step" id="step2">
-  <div class="step-header">
-    <div class="step-num">2</div>
-    <div class="step-title">Select Employee Row</div>
+<!-- Step 2 -->
+<div class="card" id="step2">
+  <div class="card-header">
+    <div class="step-badge">2</div>
+    <div class="card-title">Choose an Employee</div>
   </div>
-  <input class="search-box" type="text" id="searchBox" placeholder="Search by name or ID..." />
+  <input class="search-box" type="text" id="searchBox" placeholder="Search by name or ID…" />
   <div class="row-list" id="rowList"></div>
 </div>
 
-<!-- STEP 3: Calendar Editor -->
-<div class="step" id="step3">
-  <div class="step-header">
-    <div class="step-num">3</div>
-    <div class="step-title">Edit Schedule</div>
+<!-- Step 3 -->
+<div class="card" id="step3">
+  <div class="card-header">
+    <div class="step-badge">3</div>
+    <div class="card-title">Edit Schedule</div>
   </div>
-  <div class="calendar-wrapper visible" id="calendarWrapper">
-    <div class="employee-info" id="empInfo"></div>
 
-    <div class="summary-bar" id="summaryBar"></div>
+  <div id="empInfo"></div>
+  <div class="summary-row" id="summaryBar"></div>
 
-    <div class="cal-legend">
-      <span class="legend-item"><span class="legend-dot" style="background:var(--accent);"></span> Working</span>
-      <span class="legend-item"><span class="legend-dot" style="background:var(--off-text);"></span> Off</span>
-      <span class="legend-item"><span class="legend-dot" style="background:#2a2d3a;"></span> Weekend</span>
-      <span class="legend-item"><span class="legend-dot" style="background:var(--holiday-accent);"></span> Holiday/Note</span>
-    </div>
-    <div class="legend-item" style="font-size:0.75rem;color:var(--muted);font-family:'DM Mono',monospace;margin-bottom:1rem;">
-      Click any day to set or clear a shift value
-    </div>
+  <div class="legend">
+    <span class="legend-item"><span class="legend-dot" style="background:var(--accent);"></span>Working</span>
+    <span class="legend-item"><span class="legend-dot" style="background:var(--off-bg);border:1.5px solid var(--off-border);"></span><span style="color:var(--off-color);font-weight:600;">OFF</span></span>
+    <span class="legend-item"><span class="legend-dot" style="background:var(--sat-bg);border:1.5px solid var(--sat-border);"></span>Weekend off</span>
+    <span class="legend-item"><span class="legend-dot" style="background:var(--white);border:1.5px solid var(--border);"></span>Weekday off</span>
+  </div>
+  <p class="legend-hint">Click any day — including Saturdays and Sundays — to set or clear a shift value.</p>
 
-    <div id="calendarContainer"></div>
+  <div id="calendarContainer"></div>
 
-    <div class="action-bar">
-      <button class="btn btn-success" onclick="saveXlsx()">💾 Save & Download .xlsx</button>
-      <button class="btn btn-secondary" onclick="resetAll()">← Load Different File</button>
-    </div>
+  <div class="action-bar">
+    <button class="btn btn-primary" onclick="saveXlsx()">💾 Save &amp; Download Updated File</button>
+    <button class="btn btn-ghost" onclick="resetAll()">← Load a different file</button>
   </div>
 </div>
 
 <!-- Popup -->
 <div class="day-popup" id="dayPopup">
-  <button class="popup-close" onclick="closePopup()">×</button>
-  <div class="popup-title" id="popupTitle"></div>
+  <div class="popup-header">
+    <div class="popup-title" id="popupTitle"></div>
+    <button class="popup-close" onclick="closePopup()">✕</button>
+  </div>
   <div class="popup-options" id="popupOptions"></div>
+  <hr class="popup-divider">
   <div class="popup-custom">
-    <input class="popup-input" id="popupCustom" type="text" placeholder="Custom value..." />
+    <input class="popup-input" id="popupCustom" type="text" placeholder="Custom value…" />
     <button class="popup-apply" onclick="applyCustom()">Set</button>
   </div>
 </div>
@@ -563,36 +414,27 @@
 <div class="toast" id="toast"></div>
 
 <script>
-// ─── State ───────────────────────────────────────────────────────────────────
 let workbook = null;
-let wsData = [];      // 2D array of raw cell values
-let wsFull = null;    // full worksheet object
+let wsData = [];
+let rawFileBytes = null;  // original file kept byte-for-byte for formatting-safe save
 let selectedRowIdx = -1;
-let colDateMap = [];  // [{col (0-based), month, day, isWeekend, isHolidayCol}]
-let editedCells = {}; // col (0-based) -> value
+let colDateMap = [];
+let editedCells = {};
 let currentPopupCol = -1;
 let allEmployeeRows = [];
+let activeSheetName = '';
+let MONTH_STARTS = []; // dynamically built from each file
+const DATE_ROW_IDX = 7;
+const DATA_START_ROW = 9;
 
-// Column ranges for the schedule sheet (0-based):
-// Row 8 (index 7) has day numbers; months anchored at col 17 (Apr1), 51 (May1), 87 (Jun1)
-const MONTH_STARTS = [
-  { col0: 17, month: 3, year: 2026, name: 'April 2026' },   // col 18 in 1-based
-  { col0: 51, month: 4, year: 2026, name: 'May 2026' },
-  { col0: 87, month: 5, year: 2026, name: 'June 2026' }
-];
-const DATE_ROW_IDX = 7;  // row 8 (0-based)
-const HEADER_ROW_IDX = 8; // row 9 (0-based)
-const DATA_START_ROW = 9; // row 10 (0-based)
-
-// ─── File Loading ─────────────────────────────────────────────────────────────
+// ── File loading ──────────────────────────────────────────────────────────────
 const dropZone = document.getElementById('dropZone');
 const fileInput = document.getElementById('fileInput');
 
 dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
 dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
 dropZone.addEventListener('drop', e => {
-  e.preventDefault();
-  dropZone.classList.remove('dragover');
+  e.preventDefault(); dropZone.classList.remove('dragover');
   if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
 });
 fileInput.addEventListener('change', e => { if (e.target.files[0]) loadFile(e.target.files[0]); });
@@ -600,18 +442,55 @@ fileInput.addEventListener('change', e => { if (e.target.files[0]) loadFile(e.ta
 function loadFile(file) {
   const reader = new FileReader();
   reader.onload = e => {
+    rawFileBytes = e.target.result.slice(0); // keep pristine copy for ZIP-level save
     workbook = XLSX.read(e.target.result, { type: 'array', cellDates: true });
-    const sheetName = workbook.SheetNames.find(n => n.includes('Apr')) || workbook.SheetNames[0];
-    wsFull = workbook.Sheets[sheetName];
-    wsData = XLSX.utils.sheet_to_json(wsFull, { header: 1, defval: null, raw: false });
+
+    // Pick the first sheet that has a schedule (contains date headers in row 1)
+    // Try to find a sheet with DateTime values in row 1; fall back to sheet[0]
+    activeSheetName = workbook.SheetNames[0];
+    for (const name of workbook.SheetNames) {
+      const ws = workbook.Sheets[name];
+      const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: true });
+      const row1 = raw[0] || [];
+      const hasDate = row1.some(v => v instanceof Date || (typeof v === 'number' && v > 40000));
+      if (hasDate) { activeSheetName = name; break; }
+    }
+
+    // Parse with cellDates so Date objects come through
+    const wsRaw = XLSX.utils.sheet_to_json(
+      workbook.Sheets[activeSheetName],
+      { header: 1, defval: null, raw: true }
+    );
+
+    // Build MONTH_STARTS from row 1 Date objects
+    MONTH_STARTS = [];
+    const row1Raw = wsRaw[0] || [];
+    const MONTH_NAMES = ['January','February','March','April','May','June',
+                         'July','August','September','October','November','December'];
+    row1Raw.forEach((v, col0) => {
+      if (v instanceof Date) {
+        MONTH_STARTS.push({
+          col0,
+          month: v.getMonth(),   // 0-based
+          year: v.getFullYear(),
+          name: `${MONTH_NAMES[v.getMonth()]} ${v.getFullYear()}`
+        });
+      }
+    });
+
+    // Re-parse as strings for display/editing (raw:false gives us readable cell values)
+    wsData = XLSX.utils.sheet_to_json(
+      workbook.Sheets[activeSheetName],
+      { header: 1, defval: null, raw: false }
+    );
 
     buildColDateMap();
     buildEmployeeList();
-
-    document.getElementById('step1').classList.remove('active');
-    document.getElementById('step1').classList.add('done');
-    document.getElementById('step2').classList.add('active');
-    showToast(`Loaded "${file.name}" · ${allEmployeeRows.length} employees found`);
+    setCard('step1', 'done');
+    setCard('step2', 'active');
+    renderRowList();
+    const monthLabel = MONTH_STARTS.map(m => m.name).join(', ');
+    showToast(`Loaded "${file.name}" · ${monthLabel} · ${allEmployeeRows.length} employees`);
   };
   reader.readAsArrayBuffer(file);
 }
@@ -619,40 +498,17 @@ function loadFile(file) {
 function buildColDateMap() {
   colDateMap = [];
   const dateRow = wsData[DATE_ROW_IDX] || [];
-
   for (const ms of MONTH_STARTS) {
     const daysInMonth = new Date(ms.year, ms.month + 1, 0).getDate();
     let dayCounter = 1;
-
     for (let c = ms.col0; c < dateRow.length && dayCounter <= daysInMonth; c++) {
       const v = dateRow[c];
-      // Skip weekly summary cols (blank in date row but surrounded by day numbers)
       if (v === null || v === undefined || v === '') continue;
-      // Check if it's a holiday col (non-numeric, like "8 Holiday")
       const numVal = parseInt(v);
       if (!isNaN(numVal) && numVal >= 1 && numVal <= 31) {
         const date = new Date(ms.year, ms.month, numVal);
-        const dow = date.getDay();
-        colDateMap.push({
-          col0: c,
-          month: ms.month,
-          monthName: ms.name,
-          day: numVal,
-          dow,
-          isWeekend: dow === 0 || dow === 6,
-          date
-        });
+        colDateMap.push({ col0: c, month: ms.month, monthName: ms.name, day: numVal, dow: date.getDay(), date });
         dayCounter = numVal + 1;
-      } else if (typeof v === 'string' && v.includes('Holiday')) {
-        colDateMap.push({
-          col0: c,
-          month: ms.month,
-          monthName: ms.name,
-          day: null,
-          dow: null,
-          isHolidayMarker: true,
-          label: v
-        });
       }
     }
   }
@@ -664,34 +520,28 @@ function buildEmployeeList() {
     const row = wsData[r];
     if (!row) continue;
     const name = row[0];
-    const id = row[1];
-    const type = row[2];
-    if (!name || typeof name !== 'string') continue;
-    // Count working days in this row
+    if (!name || typeof name !== 'string' || !name.trim()) continue;
     let workCount = 0;
     for (const cd of colDateMap) {
-      if (cd.isHolidayMarker) continue;
       const v = row[cd.col0];
       if (v !== null && v !== undefined && v !== '' && !String(v).startsWith('=')) workCount++;
     }
-    allEmployeeRows.push({ rowIdx: r, name, id, type, workCount });
+    allEmployeeRows.push({ rowIdx: r, name: name.trim(), id: row[1], type: row[2], workCount });
   }
 }
 
-// ─── Employee List ────────────────────────────────────────────────────────────
-const searchBox = document.getElementById('searchBox');
-const rowList = document.getElementById('rowList');
-
-searchBox.addEventListener('input', renderRowList);
+// ── Employee list ─────────────────────────────────────────────────────────────
+document.getElementById('searchBox').addEventListener('input', renderRowList);
 
 function renderRowList() {
-  const q = searchBox.value.trim().toLowerCase();
-  rowList.innerHTML = '';
+  const q = document.getElementById('searchBox').value.trim().toLowerCase();
+  const list = document.getElementById('rowList');
+  list.innerHTML = '';
   const filtered = allEmployeeRows.filter(e =>
-    !q || e.name.toLowerCase().includes(q) || String(e.id||'').toLowerCase().includes(q)
+    !q || e.name.toLowerCase().includes(q) || String(e.id || '').toLowerCase().includes(q)
   );
   if (!filtered.length) {
-    rowList.innerHTML = '<div style="color:var(--muted);font-size:0.82rem;padding:1rem;font-family:DM Mono,monospace;">No employees found</div>';
+    list.innerHTML = '<div style="color:var(--text-muted);font-size:0.82rem;padding:0.6rem;">No employees found</div>';
     return;
   }
   filtered.forEach(emp => {
@@ -704,7 +554,7 @@ function renderRowList() {
       <div class="row-item-meta">${emp.workCount} days</div>
     `;
     div.addEventListener('click', () => selectEmployee(emp));
-    rowList.appendChild(div);
+    list.appendChild(div);
   });
 }
 
@@ -713,23 +563,23 @@ function selectEmployee(emp) {
   editedCells = {};
   renderRowList();
   buildCalendar(emp);
-  document.getElementById('step2').classList.add('done');
-  document.getElementById('step3').classList.add('active');
+  setCard('step2', 'done');
+  setCard('step3', 'active');
   document.getElementById('step3').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-// ─── Calendar ────────────────────────────────────────────────────────────────
+// ── Calendar ──────────────────────────────────────────────────────────────────
 function buildCalendar(emp) {
   const row = wsData[emp.rowIdx] || [];
-
-  // Employee info
+  const initials = emp.name.split(/[\s,]+/).map(p => p[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
   document.getElementById('empInfo').innerHTML = `
-    <div class="emp-name">${emp.name}</div>
-    ${emp.id ? `<span class="emp-tag">${emp.id}</span>` : ''}
-    ${emp.type ? `<span class="emp-tag">${emp.type}</span>` : ''}
-    <span class="emp-tag">Row ${emp.rowIdx + 1}</span>
+    <div class="emp-banner">
+      <div class="emp-avatar">${initials}</div>
+      <div class="emp-name">${emp.name}</div>
+      ${emp.id ? `<span class="emp-tag">${emp.id}</span>` : ''}
+      ${emp.type ? `<span class="emp-tag">${emp.type}</span>` : ''}
+    </div>
   `;
-
   renderSummary(row);
   renderMonths(row);
 }
@@ -737,8 +587,7 @@ function buildCalendar(emp) {
 function renderSummary(row) {
   let workDays = 0, totalHours = 0;
   for (const cd of colDateMap) {
-    if (cd.isHolidayMarker) continue;
-    const v = getEffectiveValue(row, cd.col0);
+    const v = getVal(row, cd.col0);
     if (v !== null && v !== undefined && v !== '' && !String(v).startsWith('=')) {
       workDays++;
       const n = parseFloat(v);
@@ -746,26 +595,24 @@ function renderSummary(row) {
     }
   }
   document.getElementById('summaryBar').innerHTML = `
-    <div class="summary-stat"><span class="stat-label">Work Days</span><span class="stat-val">${workDays}</span></div>
-    <div class="summary-stat"><span class="stat-label">Total Hours</span><span class="stat-val">${totalHours || '—'}</span></div>
+    <div class="stat-pill"><span class="stat-label">Work Days&nbsp;</span><span class="stat-val">${workDays}</span></div>
+    ${totalHours ? `<div class="stat-pill"><span class="stat-label">Total Hours&nbsp;</span><span class="stat-val">${totalHours}</span></div>` : ''}
   `;
 }
 
-function getEffectiveValue(row, col0) {
+function getVal(row, col0) {
   return col0 in editedCells ? editedCells[col0] : (row[col0] ?? null);
 }
 
 function renderMonths(row) {
   const container = document.getElementById('calendarContainer');
   container.innerHTML = '';
-
-  const months = [...new Set(colDateMap.filter(c=>!c.isHolidayMarker).map(c=>c.monthName))];
+  const months = [...new Set(colDateMap.map(c => c.monthName))];
 
   for (const monthName of months) {
-    const cols = colDateMap.filter(c => c.monthName === monthName && !c.isHolidayMarker);
+    const cols = colDateMap.filter(c => c.monthName === monthName);
     if (!cols.length) continue;
 
-    const firstDay = cols[0].dow; // 0=Sun
     const section = document.createElement('div');
     section.className = 'month-section';
     section.innerHTML = `<div class="month-title">${monthName}</div>`;
@@ -773,35 +620,40 @@ function renderMonths(row) {
     const grid = document.createElement('div');
     grid.className = 'cal-grid';
 
-    // Day of week headers
-    ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(d => {
+    // Day-of-week headers — all 7 days
+    ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach((d, i) => {
       const h = document.createElement('div');
-      h.className = 'cal-dow';
+      h.className = 'cal-dow' + (i === 0 ? ' sun-h' : i === 6 ? ' sat-h' : '');
       h.textContent = d;
       grid.appendChild(h);
     });
 
-    // Blank cells before first day
-    for (let i = 0; i < firstDay; i++) {
+    // Leading blank cells before the month starts
+    for (let i = 0; i < cols[0].dow; i++) {
       const blank = document.createElement('div');
       blank.className = 'cal-day empty';
       grid.appendChild(blank);
     }
 
-    // Day cells
+    // Every day in the month — weekends fully clickable and editable
     for (const cd of cols) {
-      const v = getEffectiveValue(row, cd.col0);
-      const isWork = v !== null && v !== undefined && v !== '' && !String(v).startsWith('=');
+      const v = getVal(row, cd.col0);
+      const rawVal = (v !== null && v !== undefined) ? String(v).trim() : '';
+      const isOff = rawVal.toUpperCase() === 'OFF';
+      const isWork = rawVal !== '' && !rawVal.startsWith('=') && !isOff;
+      const isSat = cd.dow === 6;
+      const isSun = cd.dow === 0;
 
       const cell = document.createElement('div');
-      cell.className = 'cal-day ' + (cd.isWeekend ? 'weekend' : (isWork ? 'work' : 'weekday'));
+      let cls = 'cal-day';
+      if (isSat) cls += ' sat';
+      if (isSun) cls += ' sun';
+      if (isWork) cls += ' work';
+      if (isOff) cls += ' off';
+      cell.className = cls;
       cell.dataset.col = cd.col0;
       cell.innerHTML = `<span class="day-num">${cd.day}</span>`;
-      if (isWork) {
-        const display = String(v).trim();
-        cell.innerHTML += `<span class="day-val">${display}</span>`;
-      }
-
+      if (isWork || isOff) cell.innerHTML += `<span class="day-val">${rawVal}</span>`;
       cell.addEventListener('click', e => openPopup(e, cd, row));
       grid.appendChild(cell);
     }
@@ -811,154 +663,273 @@ function renderMonths(row) {
   }
 }
 
-// ─── Popup ────────────────────────────────────────────────────────────────────
+// ── Popup ─────────────────────────────────────────────────────────────────────
 const popup = document.getElementById('dayPopup');
 const QUICK_OPTS = [
-  { label: '12 (12-hr shift)', value: '12' },
-  { label: '8 (8-hr shift)', value: '8' },
-  { label: 'ADM (Admin)', value: 'ADM' },
-  { label: 'OFF', value: 'OFF' },
-  { label: 'ooo (Out of office)', value: 'ooo' },
-  { label: 'PTO', value: 'PTO' },
-  { label: '🗑 Clear', value: null, danger: true }
+  { label: '12  ·  12-hour shift', value: '12' },
+  { label: '8  ·  8-hour shift',   value: '8' },
+  { label: 'ADM  ·  Admin day',    value: 'ADM' },
+  { label: 'PTO  ·  Paid time off',value: 'PTO' },
+  { label: 'ooo  ·  Out of office',value: 'ooo' },
+  { label: 'OFF',                   value: 'OFF' },
+  { label: '✕  Clear this day',    value: null, danger: true }
 ];
 
 function openPopup(e, cd, row) {
   e.stopPropagation();
   currentPopupCol = cd.col0;
-  const v = getEffectiveValue(row, cd.col0);
+  const cur = getVal(row, cd.col0);
 
   document.getElementById('popupTitle').textContent =
-    `${cd.date ? cd.date.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) : cd.label}`;
+    cd.date ? cd.date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' }) : '';
   document.getElementById('popupCustom').value = '';
 
   const opts = document.getElementById('popupOptions');
   opts.innerHTML = '';
   QUICK_OPTS.forEach(opt => {
     const btn = document.createElement('button');
-    btn.className = 'popup-btn' + (opt.danger ? ' danger' : '');
-    btn.textContent = opt.value === v ? `✓ ${opt.label}` : opt.label;
-    btn.onclick = () => { applyValue(opt.value); };
+    btn.className = 'popup-btn' + (opt.danger ? ' danger' : '') + (opt.value === cur ? ' is-active' : '');
+    btn.textContent = opt.label;
+    btn.onclick = () => applyValue(opt.value);
     opts.appendChild(btn);
   });
 
-  // Position popup near click
   const rect = e.currentTarget.getBoundingClientRect();
   let left = rect.right + 8;
   let top = rect.top;
-  if (left + 220 > window.innerWidth) left = rect.left - 228;
-  if (top + 300 > window.innerHeight) top = window.innerHeight - 310;
-  popup.style.left = left + 'px';
+  if (left + 210 > window.innerWidth) left = rect.left - 218;
+  if (top + 340 > window.innerHeight) top = window.innerHeight - 348;
+  popup.style.left = Math.max(8, left) + 'px';
   popup.style.top = Math.max(8, top) + 'px';
   popup.classList.add('show');
 }
 
-document.addEventListener('click', e => {
-  if (!popup.contains(e.target)) closePopup();
-});
+document.addEventListener('click', e => { if (!popup.contains(e.target)) closePopup(); });
 
-function closePopup() {
-  popup.classList.remove('show');
-  currentPopupCol = -1;
-}
+function closePopup() { popup.classList.remove('show'); currentPopupCol = -1; }
 
 function applyValue(val) {
   if (currentPopupCol < 0) return;
   editedCells[currentPopupCol] = val;
   closePopup();
   const emp = allEmployeeRows.find(e => e.rowIdx === selectedRowIdx);
-  if (emp) {
-    const row = wsData[emp.rowIdx] || [];
-    renderMonths(row);
-    renderSummary(row);
-  }
+  if (emp) { renderMonths(wsData[emp.rowIdx] || []); renderSummary(wsData[emp.rowIdx] || []); }
 }
 
 function applyCustom() {
-  const val = document.getElementById('popupCustom').value.trim() || null;
-  applyValue(val);
+  applyValue(document.getElementById('popupCustom').value.trim() || null);
 }
 
-// ─── Save ────────────────────────────────────────────────────────────────────
-function saveXlsx() {
-  if (!workbook || selectedRowIdx < 0) return;
+// ── Save updated xlsx — ZIP surgical patch (preserves ALL formatting) ────────
+async function saveXlsx() {
+  if (!rawFileBytes || selectedRowIdx < 0) return;
 
-  const sheetName = workbook.SheetNames.find(n => n.includes('Apr')) || workbook.SheetNames[0];
-  const ws = workbook.Sheets[sheetName];
-
-  // Apply edits to the workbook cells (1-based)
-  for (const [col0str, val] of Object.entries(editedCells)) {
-    const col0 = parseInt(col0str);
-    const colNum = col0 + 1; // 1-based
-    const rowNum = selectedRowIdx + 1; // 1-based
-    const cellAddr = XLSX.utils.encode_cell({ r: selectedRowIdx, c: col0 });
-
-    if (val === null) {
-      // Delete cell
-      delete ws[cellAddr];
-    } else {
-      const numVal = parseFloat(val);
-      ws[cellAddr] = isNaN(numVal)
-        ? { t: 's', v: val }
-        : { t: 'n', v: numVal };
-    }
-  }
-
-  // Also update the in-memory wsData for consistency
+  // Commit edits into wsData so the calendar reflects the saved state immediately
   const row = wsData[selectedRowIdx] || [];
-  for (const [col0str, val] of Object.entries(editedCells)) {
+  const edits = Object.assign({}, editedCells); // snapshot before clearing
+  for (const [col0str, val] of Object.entries(edits)) {
     row[parseInt(col0str)] = val;
   }
+  editedCells = {};
+  renderMonths(row);
+  renderSummary(row);
 
-  const wbOut = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-  const blob = new Blob([wbOut], { type: 'application/octet-stream' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'Updated_Schedule.xlsx';
-  a.click();
-  URL.revokeObjectURL(url);
+  // --- ZIP-level surgical patch ---
+  // An xlsx file is just a ZIP. We open it, find the sheet XML, patch only the
+  // changed cells' values in the raw XML, then re-zip. Every style, color,
+  // border, merged cell, and formula stays exactly as it was.
 
-  // Update the employee's workCount
-  const emp = allEmployeeRows.find(e => e.rowIdx === selectedRowIdx);
-  if (emp) {
-    let wc = 0;
-    for (const cd of colDateMap) {
-      if (cd.isHolidayMarker) continue;
-      const v = getEffectiveValue(wsData[selectedRowIdx]||[], cd.col0);
-      if (v !== null && v !== undefined && v !== '' && !String(v).startsWith('=')) wc++;
-    }
-    emp.workCount = wc;
+  const zip = await JSZip.loadAsync(rawFileBytes);
+
+  // Find the sheet's XML path from workbook.xml.rels
+  const wbRelsXml = await zip.file('xl/_rels/workbook.xml.rels').async('string');
+  const wbXml     = await zip.file('xl/workbook.xml').async('string');
+
+  // Parse sheet name -> rId mapping from workbook.xml
+  const sheetNameMatch = [...wbXml.matchAll(/<sheet\b[^>]*name="([^"]*)"[^>]*r:id="([^"]*)"/g)];
+  let sheetRId = null;
+  for (const m of sheetNameMatch) {
+    if (m[1] === activeSheetName) { sheetRId = m[2]; break; }
+  }
+  if (!sheetRId) { showToast('⚠ Could not locate sheet in workbook — try again'); return; }
+
+  // Resolve rId -> actual file path
+  const relMatch = wbRelsXml.match(new RegExp(`Id="${sheetRId}"[^>]*Target="([^"]*)"`));
+  if (!relMatch) { showToast('⚠ Could not resolve sheet path'); return; }
+  let sheetPath = relMatch[1];
+  if (!sheetPath.startsWith('xl/')) sheetPath = 'xl/' + sheetPath;
+
+  let sheetXml = await zip.file(sheetPath).async('string');
+
+  // Also load sharedStrings if present (we may need to add new string entries)
+  const ssPath = 'xl/sharedStrings.xml';
+  let ssXml = zip.file(ssPath) ? await zip.file(ssPath).async('string') : null;
+  let sharedStrings = [];  // array of string values in order
+
+  if (ssXml) {
+    // Extract existing shared strings (simple text only, no rich text parsing needed for our values)
+    const siMatches = [...ssXml.matchAll(/<si>.*?<\/si>/gs)];
+    sharedStrings = siMatches.map(m => {
+      const tMatch = m[0].match(/<t(?:[^>]*)>([\s\S]*?)<\/t>/);
+      return tMatch ? tMatch[1].replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>') : '';
+    });
   }
 
-  editedCells = {};
-  showToast('✓ Saved & downloaded Updated_Schedule.xlsx');
+  // Helper: get or add a shared string index
+  function sharedStringIdx(val) {
+    let idx = sharedStrings.indexOf(val);
+    if (idx === -1) {
+      idx = sharedStrings.length;
+      sharedStrings.push(val);
+    }
+    return idx;
+  }
+
+  // Helper: convert 0-based col number to Excel letter(s)  e.g. 0->A, 26->AA
+  function colLetter(n) {
+    let s = '';
+    for (n++; n > 0; n = Math.floor((n-1)/26)) s = String.fromCharCode(65+((n-1)%26)) + s;
+    return s;
+  }
+
+  // For each edited cell, patch the XML
+  const ws = workbook.Sheets[activeSheetName];
+
+  for (const [col0str, val] of Object.entries(edits)) {
+    const col0 = parseInt(col0str);
+    const rowNum = selectedRowIdx + 1;   // 1-based Excel row
+    const cellRef = colLetter(col0) + rowNum;  // e.g. "T23"
+
+    // Check original cell — skip if it was a formula (preserve formula cells)
+    const origCell = ws[XLSX.utils.encode_cell({ r: selectedRowIdx, c: col0 })];
+    if (origCell && origCell.f) continue;
+
+    // Build the new <c> element content
+    let newCellXml;
+    if (val === null || val === '') {
+      // Clear: replace cell with empty value node, keep style attr if present
+      // We'll just set v to empty and remove the type so Excel treats it as blank
+      newCellXml = null; // signal to remove the cell element
+    } else {
+      const n = parseFloat(val);
+      if (!isNaN(n)) {
+        // Numeric value — type='n' (or no t attr), <v>number</v>
+        newCellXml = `<v>${n}</v>`;
+      } else {
+        // String value — use inline string to avoid shared strings complexity
+        const escaped = val.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        newCellXml = `inlineStr_${escaped}`; // marker, handled below
+      }
+    }
+
+    // Find this cell in the sheet XML and patch it
+    // Cell pattern: <c r="T23" ... > ... </c>  (may span multiple lines)
+    const cellRegex = new RegExp(
+      `(<c\\b[^>]*\\br="${cellRef}"[^>]*>)([\\s\\S]*?)(</c>)`, 'g'
+    );
+
+    const existingMatch = cellRegex.exec(sheetXml);
+
+    if (existingMatch) {
+      // Cell exists — patch its value, preserve its attributes (style, etc.)
+      const openTag = existingMatch[1];
+      const closeTag = existingMatch[3];
+      let newOpen = openTag;
+
+      if (newCellXml === null) {
+        // Clear the cell: keep tag but empty value
+        sheetXml = sheetXml.replace(existingMatch[0],
+          newOpen.replace(/\s*t="[^"]*"/, '') + '<v/>' + closeTag
+        );
+      } else if (newCellXml.startsWith('inlineStr_')) {
+        const strVal = newCellXml.slice(10);
+        // Change type to inline string
+        if (/\bt="/.test(newOpen)) {
+          newOpen = newOpen.replace(/\bt="[^"]*"/, 't="inlineStr"');
+        } else {
+          newOpen = newOpen.replace(/<c\b/, '<c t="inlineStr"');
+        }
+        sheetXml = sheetXml.replace(existingMatch[0],
+          newOpen + `<is><t>${strVal}</t></is>` + closeTag
+        );
+      } else {
+        // Numeric — remove type attr (numeric is default), set <v>
+        newOpen = newOpen.replace(/\s*t="[^"]*"/, '');
+        sheetXml = sheetXml.replace(existingMatch[0],
+          newOpen + newCellXml + closeTag
+        );
+      }
+    } else {
+      // Cell doesn't exist in XML yet (was blank) — inject into the correct <row>
+      if (newCellXml === null) continue; // nothing to do for blank->blank
+
+      const rowRegex = new RegExp(`(<row\\b[^>]*\\br="${rowNum}"[^>]*>)([\\s\\S]*?)(</row>)`);
+      const rowMatch = rowRegex.exec(sheetXml);
+
+      if (rowMatch) {
+        let newCell;
+        if (newCellXml.startsWith('inlineStr_')) {
+          const strVal = newCellXml.slice(10);
+          newCell = `<c r="${cellRef}" t="inlineStr"><is><t>${strVal}</t></is></c>`;
+        } else {
+          newCell = `<c r="${cellRef}">${newCellXml}</c>`;
+        }
+        // Insert in correct column order within the row
+        // Simple approach: append before </row> then let Excel reorder on open
+        sheetXml = sheetXml.replace(rowMatch[0],
+          rowMatch[1] + rowMatch[2] + newCell + rowMatch[3]
+        );
+      }
+    }
+  }
+
+  // Write patched sheet back into ZIP
+  zip.file(sheetPath, sheetXml);
+
+  // Re-zip and download
+  const outputBlob = await zip.generateAsync({
+    type: 'blob',
+    mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    compression: 'DEFLATE',
+    compressionOptions: { level: 6 }
+  });
+
+  const safeName = activeSheetName.replace(/[^\w\s\-]/g, '').trim();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(outputBlob);
+  a.download = (safeName || 'schedule') + '_updated.xlsx';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
+
+  showToast('✓ Downloaded — all colors and formatting preserved');
 }
 
 function resetAll() {
-  workbook = null; wsData = []; wsFull = null;
-  selectedRowIdx = -1; colDateMap = []; editedCells = {};
-  allEmployeeRows = [];
-  document.getElementById('step1').classList.add('active');
-  document.getElementById('step1').classList.remove('done');
-  document.getElementById('step2').classList.remove('active','done');
-  document.getElementById('step3').classList.remove('active','done');
-  document.getElementById('rowList').innerHTML = '';
-  document.getElementById('calendarContainer').innerHTML = '';
-  document.getElementById('empInfo').innerHTML = '';
-  document.getElementById('summaryBar').innerHTML = '';
+  workbook = null; wsData = []; rawFileBytes = null; selectedRowIdx = -1;
+  colDateMap = []; editedCells = {}; allEmployeeRows = [];
+  ['step1','step2','step3'].forEach(id => setCard(id, ''));
+  setCard('step1', 'active');
+  ['rowList','calendarContainer','empInfo','summaryBar'].forEach(id => {
+    document.getElementById(id).innerHTML = '';
+  });
   fileInput.value = '';
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.style.display = 'block';
-  setTimeout(() => t.style.display = 'none', 3500);
+function setCard(id, state) {
+  const el = document.getElementById(id);
+  el.classList.remove('active', 'done');
+  if (state) el.classList.add(state);
 }
 
-// Kick off row list render (empty initially)
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', 3000);
+}
+
 renderRowList();
 </script>
 </body>
