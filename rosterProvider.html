@@ -46,22 +46,15 @@
     .drop-title { font-size: 15px; font-weight: 500; margin-bottom: 4px; }
     .drop-hint { font-size: 13px; color: #888; }
 
-
-    /* ── Provider type selector ── */
     #provider-type-area { display: none; margin-top: 1.25rem; }
-    .section-label {
-      font-size: 13px; font-weight: 500; color: #1a1a18; margin-bottom: 0.6rem;
-    }
-    .type-options {
-      display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 1rem;
-    }
+    .section-label { font-size: 13px; font-weight: 500; color: #1a1a18; margin-bottom: 0.6rem; }
+    .type-options { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 1rem; }
     .type-btn {
       display: flex; align-items: center; justify-content: center;
       padding: 7px 12px; border-radius: 8px; cursor: pointer;
       border: 1.5px solid rgba(0,0,0,0.12); background: #fff;
       font-family: inherit; font-size: 13px; font-weight: 500; color: #1a1a18;
-      transition: border-color 0.12s, background 0.12s, box-shadow 0.12s;
-      text-align: center;
+      transition: border-color 0.12s, background 0.12s, box-shadow 0.12s; text-align: center;
     }
     .type-btn:hover { background: #f5f5f3; border-color: #888; }
     .type-btn.selected {
@@ -109,7 +102,6 @@
     }
     .selected-note { font-size: 12px; color: #888; margin-bottom: 0.75rem; }
 
-    /* In-person direct download area */
     #inperson-area { display: none; margin-top: 1.25rem; }
     .inperson-note {
       font-size: 13px; color: #555; background: #f9f9f7;
@@ -140,9 +132,6 @@
   </div>
   <div id="error-msg"></div>
 
-
-
-  <!-- Provider type selector — shown after file load -->
   <div id="provider-type-area">
     <p class="section-label">What type of providers is this file for?</p>
     <div class="type-options">
@@ -151,13 +140,11 @@
     </div>
   </div>
 
-  <!-- In-person: direct download, no filter -->
   <div id="inperson-area">
     <button class="download-btn" onclick="downloadInPerson()">Download formatted file (.xlsx)</button>
     <button class="reset-btn" onclick="resetTool()">Upload another file</button>
   </div>
 
-  <!-- Virtual: filter by facility -->
   <div id="filter-area">
     <div class="filter-label">
       <span>Filter by Facility</span>
@@ -175,8 +162,9 @@
 <script>
   let cleanedData = [];
   let customFieldColIndex = -1;
+  let staffTrainerColIndex = -1;
   let outputFilename = 'formatted.xlsx';
-  let providerType = null; // 'inperson' | 'virtual'
+  let providerType = null;
 
   const COLS_TO_REMOVE = new Set([2, 4, 5, 6, 9, 10, 11, 12, 13, 14, 15, 16, 18, 19, 20]);
   const COL_H_INDEX = 7;
@@ -219,9 +207,9 @@
         const result = processWorkbook(wb);
         cleanedData = result.data;
         customFieldColIndex = result.customFieldColIndex;
+        staffTrainerColIndex = result.staffTrainerColIndex;
         outputFilename = file.name.replace(/\.[^.]+$/, '') + '_formatted.xlsx';
 
-        // Reset provider type and show selector
         providerType = null;
         document.getElementById('btn-inperson').classList.remove('selected');
         document.getElementById('btn-virtual').classList.remove('selected');
@@ -245,8 +233,6 @@
     if (type === 'inperson') {
       document.getElementById('inperson-area').style.display = 'block';
       document.getElementById('filter-area').style.display = 'none';
-      const rowCount = Math.max(0, cleanedData.length - 1);
-      document.getElementById('inperson-row-count').textContent = rowCount + ' data row' + (rowCount !== 1 ? 's' : '');
     } else {
       document.getElementById('inperson-area').style.display = 'none';
       document.getElementById('filter-area').style.display = 'block';
@@ -255,18 +241,22 @@
   }
 
   function processWorkbook(wb) {
-    let allData = [], totalStats = { origCols: 0, removed: 0, remaining: 0, rows: 0 }, cfColIdx = -1;
+    let allData = [], cfColIdx = -1, stColIdx = -1;
     wb.SheetNames.forEach(function(sheetName) {
       const ws = wb.Sheets[sheetName];
       if (!ws['!ref']) return;
       const range = XLSX.utils.decode_range(ws['!ref']);
-      const numOrigCols = range.e.c + 1, numRows = range.e.r + 1;
       const newData = [];
-      let tempIdx = 0, cfNewIdx = -1;
+      let tempIdx = 0, cfNewIdx = -1, stNewIdx = -1;
       for (let c = range.s.c; c <= range.e.c; c++) {
-        if (!COLS_TO_REMOVE.has(c)) { if (c === COL_R_INDEX) cfNewIdx = tempIdx; tempIdx++; }
+        if (!COLS_TO_REMOVE.has(c)) {
+          if (c === COL_R_INDEX) cfNewIdx = tempIdx;
+          if (c === COL_H_INDEX) stNewIdx = tempIdx;
+          tempIdx++;
+        }
       }
       cfColIdx = cfNewIdx;
+      stColIdx = stNewIdx;
       for (let r = range.s.r; r <= range.e.r; r++) {
         const newRow = [];
         for (let c = range.s.c; c <= range.e.c; c++) {
@@ -288,10 +278,8 @@
         newData.push(newRow);
       }
       allData = newData;
-      const removedCount = Array.from(COLS_TO_REMOVE).filter(c => c <= range.e.c).length;
-      totalStats = { origCols: numOrigCols, removed: removedCount, remaining: numOrigCols - removedCount, rows: numRows - 1 };
     });
-    return { data: allData, stats: totalStats, customFieldColIndex: cfColIdx };
+    return { data: allData, customFieldColIndex: cfColIdx, staffTrainerColIndex: stColIdx };
   }
 
   function buildFilterUI() {
@@ -354,8 +342,6 @@
 
   function selectAll() { document.querySelectorAll('#filter-options input[type="checkbox"]').forEach(cb => cb.checked = true); updateDownloadBtn(); }
   function selectNone() { document.querySelectorAll('#filter-options input[type="checkbox"]').forEach(cb => cb.checked = false); updateDownloadBtn(); }
-
-  // ---- xlsx building ----
 
   function colLetter(n) {
     let s = ''; n++;
@@ -510,31 +496,47 @@
       });
   }
 
-  // In-person: export all rows, keeping Custom Fields column
+  // In-person: drop Staff Trainer column, rename Custom Fields header to "Specialty", keep all rows
   function downloadInPerson() {
     try {
       if (!cleanedData || cleanedData.length <= 1) {
         showError('No data rows found in this file. Please try a different file.', true); return;
       }
-      buildXlsx(cleanedData);
+      const dropCols = new Set();
+      if (staffTrainerColIndex !== -1) dropCols.add(staffTrainerColIndex);
+
+      const finalData = cleanedData.map(row => row.filter((_, i) => !dropCols.has(i)));
+
+      // Rename "Custom Fields" header to "Specialty" in the output header row.
+      // After dropping staffTrainerColIndex, customFieldColIndex may have shifted down by 1
+      // if staffTrainerColIndex < customFieldColIndex.
+      if (customFieldColIndex !== -1) {
+        let adjustedCFIdx = customFieldColIndex;
+        if (staffTrainerColIndex !== -1 && staffTrainerColIndex < customFieldColIndex) {
+          adjustedCFIdx--;
+        }
+        if (finalData[0][adjustedCFIdx] !== undefined) {
+          finalData[0][adjustedCFIdx] = 'Specialty';
+        }
+      }
+
+      buildXlsx(finalData);
     } catch(err) {
       showError('Something went wrong while generating the file. Please try uploading a different file.', true);
       console.error(err);
     }
   }
 
-  // Virtual: filter by selected facility, drop Custom Fields column from output
+  // Virtual: filter by selected facility, drop Custom Fields column
   function downloadFile() {
     try {
       const selected = new Set(getSelectedOptions());
       if (selected.size === 0) return;
-      const headerRow = cleanedData[0];
-
       const dropCols = new Set();
       if (customFieldColIndex !== -1) dropCols.add(customFieldColIndex);
 
       const finalData = [];
-      finalData.push(headerRow.filter((_, i) => !dropCols.has(i)));
+      finalData.push(cleanedData[0].filter((_, i) => !dropCols.has(i)));
       for (let r = 1; r < cleanedData.length; r++) {
         const row = cleanedData[r];
         const cfVal = (row[customFieldColIndex] !== null && row[customFieldColIndex] !== undefined)
@@ -559,7 +561,7 @@
   }
 
   function resetTool() {
-    cleanedData = []; customFieldColIndex = -1; providerType = null;
+    cleanedData = []; customFieldColIndex = -1; staffTrainerColIndex = -1; providerType = null;
     document.getElementById('provider-type-area').style.display = 'none';
     document.getElementById('inperson-area').style.display = 'none';
     document.getElementById('filter-area').style.display = 'none';
