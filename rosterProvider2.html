@@ -17,8 +17,26 @@
       background: #fff; border-radius: 16px; border: 0.5px solid rgba(0,0,0,0.12);
       padding: 2rem; width: 100%; max-width: 620px;
     }
+    .back-btn {
+      position: fixed; top: 1rem; left: 1rem;
+      font-family: inherit; font-size: 12px; color: #888;
+      background: #fff; border: 0.5px solid rgba(0,0,0,0.15);
+      border-radius: 6px; padding: 4px 9px; cursor: pointer;
+      text-decoration: none; transition: background 0.12s, color 0.12s;
+    }
+    .back-btn:hover { background: #f0f0ee; color: #1a1a18; }
     h1 { font-size: 20px; font-weight: 500; margin-bottom: 0.25rem; }
-    .subtitle { font-size: 14px; color: #666; margin-bottom: 1.5rem; line-height: 1.5; }
+    .subtitle { font-size: 14px; color: #666; margin-bottom: 1rem; line-height: 1.5; }
+    .steps-box {
+      background: #f9f9f7; border: 0.5px solid rgba(0,0,0,0.1); border-radius: 10px;
+      padding: 0.85rem 1.1rem; margin-bottom: 1.25rem; display: flex; flex-direction: column; gap: 0.55rem;
+    }
+    .step { display: flex; align-items: baseline; gap: 0.6rem; font-size: 13px; color: #444; line-height: 1.4; }
+    .step-num {
+      flex-shrink: 0; width: 18px; height: 18px; border-radius: 50%; background: #1a1a18;
+      color: #fff; font-size: 11px; font-weight: 600; display: flex; align-items: center;
+      justify-content: center; position: relative; top: 1px;
+    }
     #drop-zone {
       border: 1.5px dashed #bbb; border-radius: 12px; padding: 2.5rem 1.5rem;
       text-align: center; cursor: pointer; transition: background 0.15s, border-color 0.15s;
@@ -27,17 +45,7 @@
     .drop-icon { font-size: 32px; margin-bottom: 0.5rem; line-height: 1; }
     .drop-title { font-size: 15px; font-weight: 500; margin-bottom: 4px; }
     .drop-hint { font-size: 13px; color: #888; }
-    #status-area { display: none; margin-top: 1.25rem; }
-    .status-box {
-      background: #f9f9f7; border-radius: 10px; border: 0.5px solid rgba(0,0,0,0.1);
-      padding: 1rem 1.25rem; margin-bottom: 1rem;
-    }
-    .status-row {
-      display: flex; justify-content: space-between; font-size: 13px;
-      padding: 4px 0; border-bottom: 0.5px solid rgba(0,0,0,0.06); color: #555;
-    }
-    .status-row:last-child { border-bottom: none; }
-    .status-row span:last-child { font-weight: 500; color: #1a1a18; }
+
 
     /* ── Provider type selector ── */
     #provider-type-area { display: none; margin-top: 1.25rem; }
@@ -48,21 +56,18 @@
       display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 1rem;
     }
     .type-btn {
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      gap: 6px; padding: 1rem 0.75rem; border-radius: 10px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      padding: 7px 12px; border-radius: 8px; cursor: pointer;
       border: 1.5px solid rgba(0,0,0,0.12); background: #fff;
       font-family: inherit; font-size: 13px; font-weight: 500; color: #1a1a18;
       transition: border-color 0.12s, background 0.12s, box-shadow 0.12s;
-      text-align: center; line-height: 1.3;
+      text-align: center;
     }
-    .type-btn .type-icon { font-size: 22px; line-height: 1; }
     .type-btn:hover { background: #f5f5f3; border-color: #888; }
     .type-btn.selected {
       border-color: #1a1a18; background: #1a1a18; color: #fff;
       box-shadow: 0 2px 8px rgba(0,0,0,0.12);
     }
-    .type-btn.selected .type-desc { color: rgba(255,255,255,0.65); }
-    .type-desc { font-size: 11px; font-weight: 400; color: #888; }
 
     #filter-area { display: none; margin-top: 1.25rem; }
     .filter-label {
@@ -114,9 +119,15 @@
   </style>
 </head>
 <body>
+<a class="back-btn" href="https://www.haydens.cool/">← Home</a>
 <div class="card">
   <h1>Bookings to Printable Provider Roster</h1>
   <p class="subtitle">Upload an Excel or CSV from Microsoft Bookings to reformat.</p>
+  <div class="steps-box">
+    <div class="step"><span class="step-num">1</span><span>Find your Bookings calendar</span></div>
+    <div class="step"><span class="step-num">2</span><span>Near the top-right, Export and choose a date range</span></div>
+    <div class="step"><span class="step-num">3</span><span>Upload the file, and choose if the list is for 'In-person' or 'Virtual' appointments</span></div>
+  </div>
   <div id="drop-zone"
     onclick="document.getElementById('file-input').click()"
     ondragover="event.preventDefault();this.classList.add('dragover')"
@@ -129,33 +140,19 @@
   </div>
   <div id="error-msg"></div>
 
-  <div id="status-area">
-    <div class="status-box">
-      <div class="status-row"><span>File</span><span id="s-filename">—</span></div>
-      <div class="status-row"><span>Rows</span><span id="s-rows">—</span></div>
-    </div>
-  </div>
+
 
   <!-- Provider type selector — shown after file load -->
   <div id="provider-type-area">
     <p class="section-label">What type of providers is this file for?</p>
     <div class="type-options">
-      <button class="type-btn" id="btn-inperson" onclick="selectProviderType('inperson')">
-        <span class="type-icon">🏥</span>
-        In Person Providers
-        <span class="type-desc">All rows exported as-is</span>
-      </button>
-      <button class="type-btn" id="btn-virtual" onclick="selectProviderType('virtual')">
-        <span class="type-icon">💻</span>
-        Virtual Providers
-        <span class="type-desc">Filter by facility before export</span>
-      </button>
+      <button class="type-btn" id="btn-inperson" onclick="selectProviderType('inperson')">In Person Providers</button>
+      <button class="type-btn" id="btn-virtual" onclick="selectProviderType('virtual')">Virtual Providers</button>
     </div>
   </div>
 
   <!-- In-person: direct download, no filter -->
   <div id="inperson-area">
-    <p class="inperson-note">All <strong id="inperson-row-count">—</strong> rows will be included in the export, with the Custom Fields column retained.</p>
     <button class="download-btn" onclick="downloadInPerson()">Download formatted file (.xlsx)</button>
     <button class="reset-btn" onclick="resetTool()">Upload another file</button>
   </div>
@@ -223,7 +220,7 @@
         cleanedData = result.data;
         customFieldColIndex = result.customFieldColIndex;
         outputFilename = file.name.replace(/\.[^.]+$/, '') + '_formatted.xlsx';
-        showStatus(file.name, result.stats);
+
         // Reset provider type and show selector
         providerType = null;
         document.getElementById('btn-inperson').classList.remove('selected');
@@ -537,11 +534,7 @@
     buildXlsx(finalData);
   }
 
-  function showStatus(filename, stats) {
-    document.getElementById('s-filename').textContent = filename;
-    document.getElementById('s-rows').textContent = stats.rows + ' data rows';
-    document.getElementById('status-area').style.display = 'block';
-  }
+
 
   function showError(msg) {
     const el = document.getElementById('error-msg');
@@ -550,7 +543,6 @@
 
   function resetTool() {
     cleanedData = []; customFieldColIndex = -1; providerType = null;
-    document.getElementById('status-area').style.display = 'none';
     document.getElementById('provider-type-area').style.display = 'none';
     document.getElementById('inperson-area').style.display = 'none';
     document.getElementById('filter-area').style.display = 'none';
