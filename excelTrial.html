@@ -13,33 +13,33 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 h1{font-size:20px;font-weight:500;margin-bottom:0.25rem;color:#1a1a18}
 .subtitle{font-size:14px;color:#666;margin-bottom:1.25rem;line-height:1.5}
 #drop-zone{border:1.5px dashed #bbb;border-radius:12px;padding:2.5rem 1.5rem;text-align:center;cursor:pointer;transition:background 0.15s,border-color 0.15s}
-#drop-zone:hover,#drop-zone.dragover{background:#f0f5ff;border-color:#3b82f6}
+#drop-zone:hover,#drop-zone.dragover{background:#eff6ff;border-color:#2563eb}
 .drop-icon{font-size:32px;margin-bottom:0.5rem;line-height:1}
 .drop-title{font-size:15px;font-weight:500;margin-bottom:4px;color:#1a1a18}
 .drop-hint{font-size:13px;color:#888}
 .section-label{font-size:13px;font-weight:500;color:#1a1a18;margin-bottom:0.6rem;display:flex;align-items:center;justify-content:space-between}
-.section-label a{font-size:12px;font-weight:400;color:#3b82f6;cursor:pointer;text-decoration:none}
-.section-label a:hover{color:#1d4ed8}
+.section-label a{font-size:12px;font-weight:400;color:#2563eb;cursor:pointer;text-decoration:none}
+.section-label a:hover{color:#1e3a8a}
 .cols-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:0.5rem;margin-bottom:1.25rem}
 .col-btn{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;cursor:pointer;border:1.5px solid rgba(0,0,0,0.12);background:#fff;font-family:inherit;font-size:13px;font-weight:400;color:#1a1a18;transition:border-color 0.12s,background 0.12s;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.col-btn:hover{background:#f0f5ff;border-color:#3b82f6}
-.col-btn.selected{border-color:#1d4ed8;background:#1d4ed8;color:#fff}
+.col-btn:hover{background:#eff6ff;border-color:#2563eb}
+.col-btn.selected{border-color:#1e3a8a;background:#1e3a8a;color:#fff}
 .col-btn .chk{width:14px;height:14px;border-radius:3px;border:1.5px solid currentColor;flex-shrink:0;display:flex;align-items:center;justify-content:center}
 .col-btn.selected .chk::after{content:'';display:block;width:8px;height:8px;background:#fff;border-radius:1px;clip-path:polygon(20% 45%,0 65%,35% 100%,100% 10%,80% 0%,30% 65%)}
 .divider{border:none;border-top:0.5px solid rgba(0,0,0,0.1);margin:1.25rem 0}
 .filter-block{background:#f9f9f7;border:0.5px solid rgba(0,0,0,0.1);border-radius:10px;overflow:hidden;margin-bottom:1rem}
 .filter-option{display:flex;align-items:center;gap:10px;padding:9px 14px;font-size:13px;color:#1a1a18;border-bottom:0.5px solid rgba(0,0,0,0.06);cursor:pointer;transition:background 0.1s;user-select:none}
 .filter-option:last-child{border-bottom:none}
-.filter-option:hover{background:#f0f5ff}
-.filter-option input[type=checkbox]{width:15px;height:15px;cursor:pointer;flex-shrink:0;accent-color:#1d4ed8}
+.filter-option:hover{background:#eff6ff}
+.filter-option input[type=checkbox]{width:15px;height:15px;cursor:pointer;flex-shrink:0;accent-color:#1e3a8a}
 .filter-option .count{margin-left:auto;font-size:12px;color:#aaa;white-space:nowrap}
 .no-options{padding:12px 14px;font-size:13px;color:#aaa;font-style:italic}
 .filter-toggle-row{display:flex;gap:0.5rem;margin-bottom:1rem}
 .toggle-btn{flex:1;padding:8px 12px;border-radius:8px;cursor:pointer;border:1.5px solid rgba(0,0,0,0.12);background:#fff;font-family:inherit;font-size:13px;font-weight:500;color:#1a1a18;transition:border-color 0.12s,background 0.12s}
-.toggle-btn:hover{background:#f0f5ff;border-color:#3b82f6}
-.toggle-btn.selected{border-color:#1d4ed8;background:#1d4ed8;color:#fff}
-.download-btn{display:block;width:100%;padding:10px;font-size:14px;font-weight:500;font-family:inherit;background:#1d4ed8;color:#fff;border:none;border-radius:10px;cursor:pointer;transition:background 0.12s;margin-top:1.25rem}
-.download-btn:hover{background:#1e40af}
+.toggle-btn:hover{background:#eff6ff;border-color:#2563eb}
+.toggle-btn.selected{border-color:#1e3a8a;background:#1e3a8a;color:#fff}
+.download-btn{display:block;width:100%;padding:10px;font-size:14px;font-weight:500;font-family:inherit;background:#1e3a8a;color:#fff;border:none;border-radius:10px;cursor:pointer;transition:background 0.12s;margin-top:1.25rem}
+.download-btn:hover{background:#1e3a8a}
 .download-btn:disabled{background:#93c5fd;cursor:not-allowed}
 .download-btn:active:not(:disabled){transform:scale(0.99)}
 .reset-btn{display:block;width:100%;margin-top:0.5rem;padding:8px;font-size:13px;font-family:inherit;background:transparent;color:#888;border:0.5px solid rgba(0,0,0,0.15);border-radius:10px;cursor:pointer;transition:background 0.12s}
@@ -276,8 +276,23 @@ function downloadFile(){
   const filtered=getFilteredRows();
   if(filtered.length===0){showError('No rows match the current filters.',true);return;}
   const finalHeaders=keptCols.map(i=>headers[i]);
-  const finalData=[finalHeaders,...filtered.map(row=>keptCols.map(i=>row[i]))];
+  const cfFinalIdx = filterMode===true && customFieldColIndex!==-1 ? keptCols.indexOf(customFieldColIndex) : -1;
+  const finalData=[finalHeaders,...filtered.map(row=>keptCols.map((colIdx,fi)=>{
+    const val=row[colIdx];
+    if(fi===cfFinalIdx) return extractBetween3rdAnd4thQuote(val);
+    return val;
+  }))];
   buildXlsx(finalData);
+}
+
+function extractBetween3rdAnd4thQuote(str){
+  if(!str) return '';
+  const s=String(str);
+  let count=0,start=-1;
+  for(let i=0;i<s.length;i++){
+    if(s[i]==='"'){count++;if(count===3)start=i+1;if(count===4)return s.slice(start,i).trim();}
+  }
+  return '';
 }
 
 function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
