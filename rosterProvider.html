@@ -144,7 +144,7 @@
     <p class="section-label">What type of providers is this file for?</p>
     <div class="type-options">
       <button class="type-btn" id="btn-inperson" onclick="selectProviderType('inperson')">In Person Providers</button>
-      <button class="type-btn" id="btn-virtual" onclick="selectProviderType('virtual')">Virtual Providers & Preference Setting</button>
+      <button class="type-btn" id="btn-virtual" onclick="selectProviderType('virtual')">Virtual Providers &amp; Preference Setting</button>
     </div>
   </div>
 
@@ -176,8 +176,10 @@
   let outputFilename = 'formatted.xlsx';
   let providerType = null;
 
-  const COLS_TO_REMOVE = new Set([2, 4, 5, 6, 8, 9, 11, 12, 13, 14, 15, 16, 18, 19, 20]);
+  // Column 8 (I) is no longer removed — it is kept and truncated instead.
+  const COLS_TO_REMOVE = new Set([2, 4, 5, 6, 9, 11, 12, 13, 14, 15, 16, 18, 19, 20]);
   const COL_H_INDEX = 7;
+  const COL_I_INDEX = 8;
   const COL_R_INDEX = 17;
 
   function extractBetween3rdAnd4thQuote(str) {
@@ -194,9 +196,20 @@
     return '';
   }
 
+  // Returns the word between the first and second space in a string.
+  // e.g. "kjsadalksd Surgery kladfkjsldfjsldkfskjdfla" → "Surgery"
+  function extractBetweenFirstAndSecondSpace(str) {
+    if (!str) return '';
+    const s = String(str);
+    const first = s.indexOf(' ');
+    if (first === -1) return s;
+    const second = s.indexOf(' ', first + 1);
+    if (second === -1) return s.slice(first + 1);
+    return s.slice(first + 1, second);
+  }
+
   // Returns the 2 characters immediately after the first "_" in a string.
-  // e.g. "ABC_XY something" → "XY"
-  // If no "_" is found, returns the raw value as-is.
+  // e.g. "ABC_XY something" → "Trainer XY"
   function twoCharsAfterFirstUnderscore(str) {
     if (!str) return '';
     const s = String(str);
@@ -284,18 +297,24 @@
           if (!COLS_TO_REMOVE.has(c)) {
             const cell = ws[XLSX.utils.encode_cell({ r, c })];
             let val = cell ? cell.v : null;
+
             if (c === COL_H_INDEX) {
-              // Header row: label it; data rows: store the raw value (no slicing yet —
-              // the correct transform is applied later depending on provider type).
-              if (r === range.s.r) {
-                val = 'Staff Trainer';
-              }
-              // Raw value kept for data rows; transformation happens at download time.
+              if (r === range.s.r) val = 'Staff Trainer';
+              // Raw value kept for data rows; transformation applied at download time.
             }
+
+            if (c === COL_I_INDEX) {
+              // Header row: keep as-is. Data rows: truncate to word between 1st and 2nd space.
+              if (r !== range.s.r && val !== null && val !== undefined) {
+                val = extractBetweenFirstAndSecondSpace(String(val));
+              }
+            }
+
             if (c === COL_R_INDEX) {
               if (r === range.s.r) val = 'Custom Fields';
               else if (val !== null && val !== undefined) val = extractBetween3rdAnd4thQuote(String(val));
             }
+
             if (c === 0 && val instanceof Date) val = val.toLocaleString();
             newRow.push(val);
           }
