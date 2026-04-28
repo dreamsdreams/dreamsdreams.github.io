@@ -90,6 +90,14 @@
     .download-btn:hover { background: #333; }
     .download-btn:disabled { background: #999; cursor: not-allowed; }
     .download-btn:active:not(:disabled) { transform: scale(0.99); }
+    .preview-btn {
+      display: block; width: 100%; padding: 10px; font-size: 14px; font-weight: 500;
+      font-family: inherit; background: #fff; color: #1a1a18;
+      border: 1.5px solid #1a1a18; border-radius: 10px; cursor: pointer; transition: background 0.12s;
+    }
+    .preview-btn:hover { background: #f5f5f3; }
+    .preview-btn:disabled { border-color: #ccc; color: #999; cursor: not-allowed; background: #fff; }
+    .download-btn { margin-top: 0.5rem; }
     .reset-btn {
       display: block; width: 100%; margin-top: 0.5rem; padding: 8px; font-size: 13px;
       font-family: inherit; background: transparent; color: #888;
@@ -141,6 +149,7 @@
   </div>
 
   <div id="inperson-area">
+    <button class="preview-btn" onclick="previewInPerson()">Preview &amp; Print</button>
     <button class="download-btn" onclick="downloadInPerson()">Download formatted file (.xlsx)</button>
     <button class="reset-btn" onclick="resetTool()">Upload another file</button>
   </div>
@@ -154,6 +163,7 @@
     </div>
     <div id="filter-options"></div>
     <p class="selected-note" id="selected-note"></p>
+    <button class="preview-btn" id="preview-btn" onclick="previewFile()" disabled>Preview &amp; Print</button>
     <button class="download-btn" id="download-btn" onclick="downloadFile()" disabled>Download formatted file (.xlsx)</button>
     <button class="reset-btn" onclick="resetTool()">Upload another file</button>
   </div>
@@ -339,12 +349,15 @@
   function updateDownloadBtn() {
     const selected = getSelectedOptions();
     const btn = document.getElementById('download-btn');
+    const prevBtn = document.getElementById('preview-btn');
     const note = document.getElementById('selected-note');
     if (selected.length === 0) {
       btn.disabled = true;
+      prevBtn.disabled = true;
       note.textContent = 'Select at least one option to download.';
     } else {
       btn.disabled = false;
+      prevBtn.disabled = false;
       const selSet = new Set(selected);
       const matching = cleanedData.slice(1).filter(row => {
         const val = (row[customFieldColIndex] !== null && row[customFieldColIndex] !== undefined)
@@ -511,87 +524,145 @@
       });
   }
 
-  // In-person: drop Staff Trainer column, rename Custom Fields header to "Specialty", keep all rows.
-  // Staff Trainer values are transformed with the original slice(12, 33).
+  // ── Shared data builders ──────────────────────────────────────────────────
+
+  function buildInPersonData() {
+    if (!cleanedData || cleanedData.length <= 1) return null;
+    const dropCols = new Set();
+    if (staffTrainerColIndex !== -1) dropCols.add(staffTrainerColIndex);
+    const finalData = cleanedData.map(row => row.filter((_, i) => !dropCols.has(i)));
+    if (customFieldColIndex !== -1) {
+      let adjustedCFIdx = customFieldColIndex;
+      if (staffTrainerColIndex !== -1 && staffTrainerColIndex < customFieldColIndex) adjustedCFIdx--;
+      if (finalData[0][adjustedCFIdx] !== undefined) finalData[0][adjustedCFIdx] = 'Specialty';
+    }
+    return finalData;
+  }
+
+  function buildVirtualData() {
+    const selected = new Set(getSelectedOptions());
+    if (selected.size === 0) return null;
+    const dropCols = new Set();
+    if (customFieldColIndex !== -1) dropCols.add(customFieldColIndex);
+    const finalData = [];
+    finalData.push(cleanedData[0].filter((_, i) => !dropCols.has(i)));
+    for (let r = 1; r < cleanedData.length; r++) {
+      const row = cleanedData[r];
+      const cfVal = (row[customFieldColIndex] !== null && row[customFieldColIndex] !== undefined)
+        ? String(row[customFieldColIndex]).trim() : '(blank)';
+      if (!selected.has(cfVal)) continue;
+      let adjustedSTIdx = staffTrainerColIndex;
+      if (customFieldColIndex !== -1 && customFieldColIndex < staffTrainerColIndex) adjustedSTIdx--;
+      const newRow = row.filter((_, i) => !dropCols.has(i)).map(function(val, newColIdx) {
+        if (staffTrainerColIndex !== -1 && newColIdx === adjustedSTIdx)
+          return (val !== null && val !== undefined) ? twoCharsAfterFirstUnderscore(String(val)) : val;
+        return val;
+      });
+      finalData.push(newRow);
+    }
+    return finalData.length > 1 ? finalData : null;
+  }
+
+  // ── Print preview ─────────────────────────────────────────────────────────
+
+  function openPrintPreview(data, title) {
+    if (!data || data.length <= 1) { showError('No data to preview.', true); return; }
+    const headers = data[0];
+    const rows = data.slice(1);
+
+    let headerCells = headers.map(h => '<th>' + escapeHtml(h !== null && h !== undefined ? String(h) : '') + '</th>').join('');
+    let bodyRows = rows.map(function(row) {
+      const cells = row.map(v => '<td>' + escapeHtml(v !== null && v !== undefined ? String(v) : '') + '</td>').join('');
+      return '<tr>' + cells + '</tr>';
+    }).join('');
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>${escapeHtml(title)}</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 12px; color: #111; background: #fff; padding: 1rem; }
+    .toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid #ddd; gap: 1rem; }
+    .toolbar h1 { font-size: 15px; font-weight: 600; }
+    .toolbar-btns { display: flex; gap: 0.5rem; flex-shrink: 0; }
+    .btn-print { padding: 7px 16px; font-size: 13px; font-weight: 500; font-family: inherit; background: #1a1a18; color: #fff; border: none; border-radius: 8px; cursor: pointer; }
+    .btn-print:hover { background: #333; }
+    .btn-close { padding: 7px 14px; font-size: 13px; font-weight: 500; font-family: inherit; background: #fff; color: #1a1a18; border: 1.5px solid #1a1a18; border-radius: 8px; cursor: pointer; }
+    .btn-close:hover { background: #f5f5f3; }
+    table { width: 100%; border-collapse: collapse; table-layout: auto; }
+    thead tr { background: #1f5c99; color: #fff; }
+    th { padding: 7px 10px; text-align: left; font-size: 11px; font-weight: 600; white-space: nowrap; }
+    td { padding: 6px 10px; font-size: 11px; vertical-align: top; border-bottom: 0.5px solid #e5e5e5; }
+    tr:nth-child(even) td { background: #f7f9fc; }
+    tr:hover td { background: #eef3fa; }
+    @media print {
+      .toolbar { display: none; }
+      body { padding: 0; }
+      thead tr { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: #1f5c99 !important; color: #fff !important; }
+      tr:nth-child(even) td { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: #f7f9fc !important; }
+      tr:hover td { background: transparent !important; }
+      table { page-break-inside: auto; }
+      tr { page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <h1>${escapeHtml(title)}</h1>
+    <div class="toolbar-btns">
+      <button class="btn-close" onclick="window.close()">Close</button>
+      <button class="btn-print" onclick="window.print()">🖨 Print</button>
+    </div>
+  </div>
+  <table>
+    <thead><tr>${headerCells}</tr></thead>
+    <tbody>${bodyRows}</tbody>
+  </table>
+</body>
+</html>`;
+
+    const win = window.open('', '_blank');
+    if (!win) { showError('Pop-up blocked. Please allow pop-ups for this page and try again.'); return; }
+    win.document.write(html);
+    win.document.close();
+  }
+
+  function previewInPerson() {
+    try {
+      const data = buildInPersonData();
+      if (!data) { showError('No data rows found in this file. Please try a different file.', true); return; }
+      openPrintPreview(data, outputFilename.replace('_formatted.xlsx', '') + ' — In-Person Roster');
+    } catch(err) { showError('Something went wrong during preview.', true); console.error(err); }
+  }
+
+  function previewFile() {
+    try {
+      const data = buildVirtualData();
+      if (!data) { showError('No rows matched the selected filters.', true); return; }
+      openPrintPreview(data, outputFilename.replace('_formatted.xlsx', '') + ' — Virtual Roster');
+    } catch(err) { showError('Something went wrong during preview.', true); console.error(err); }
+  }
+
+  // ── Download functions (use shared builders) ─────────────────────────────
+
   function downloadInPerson() {
     try {
-      if (!cleanedData || cleanedData.length <= 1) {
-        showError('No data rows found in this file. Please try a different file.', true); return;
-      }
-      const dropCols = new Set();
-      if (staffTrainerColIndex !== -1) dropCols.add(staffTrainerColIndex);
-
-      const finalData = cleanedData.map(function(row, rowIdx) {
-        return row
-          .filter((_, i) => !dropCols.has(i))
-          .map(function(val, newColIdx) {
-            // After dropping staffTrainerColIndex, figure out original col index.
-            // We don't need to touch Staff Trainer values here since that column is dropped.
-            return val;
-          });
-      });
-
-      // Rename "Custom Fields" header to "Specialty".
-      // Adjust index if staffTrainerColIndex was before customFieldColIndex.
-      if (customFieldColIndex !== -1) {
-        let adjustedCFIdx = customFieldColIndex;
-        if (staffTrainerColIndex !== -1 && staffTrainerColIndex < customFieldColIndex) {
-          adjustedCFIdx--;
-        }
-        if (finalData[0][adjustedCFIdx] !== undefined) {
-          finalData[0][adjustedCFIdx] = 'Specialty';
-        }
-      }
-
-      buildXlsx(finalData);
+      const data = buildInPersonData();
+      if (!data) { showError('No data rows found in this file. Please try a different file.', true); return; }
+      buildXlsx(data);
     } catch(err) {
       showError('Something went wrong while generating the file. Please try uploading a different file.', true);
       console.error(err);
     }
   }
 
-  // Virtual: filter by selected facility, drop Custom Fields column.
-  // Staff Trainer values are transformed to 2 characters after the first "_".
   function downloadFile() {
     try {
-      const selected = new Set(getSelectedOptions());
-      if (selected.size === 0) return;
-      const dropCols = new Set();
-      if (customFieldColIndex !== -1) dropCols.add(customFieldColIndex);
-
-      const finalData = [];
-
-      // Header row — keep as-is (no transform needed on the header text itself)
-      finalData.push(cleanedData[0].filter((_, i) => !dropCols.has(i)));
-
-      for (let r = 1; r < cleanedData.length; r++) {
-        const row = cleanedData[r];
-        const cfVal = (row[customFieldColIndex] !== null && row[customFieldColIndex] !== undefined)
-          ? String(row[customFieldColIndex]).trim() : '(blank)';
-        if (!selected.has(cfVal)) continue;
-
-        const newRow = row
-          .filter((_, i) => !dropCols.has(i))
-          .map(function(val, newColIdx) {
-            // Determine whether this newColIdx corresponds to the Staff Trainer column.
-            // After dropping customFieldColIndex columns, staffTrainerColIndex may shift.
-            let adjustedSTIdx = staffTrainerColIndex;
-            if (customFieldColIndex !== -1 && customFieldColIndex < staffTrainerColIndex) {
-              adjustedSTIdx--;
-            }
-            if (staffTrainerColIndex !== -1 && newColIdx === adjustedSTIdx) {
-              return (val !== null && val !== undefined) ? twoCharsAfterFirstUnderscore(String(val)) : val;
-            }
-            return val;
-          });
-
-        finalData.push(newRow);
-      }
-
-      if (finalData.length <= 1) {
-        showError('No rows matched the selected filters. Please try a different file or selection.', true); return;
-      }
-      buildXlsx(finalData);
+      const data = buildVirtualData();
+      if (!data) { showError('No rows matched the selected filters. Please try a different file or selection.', true); return; }
+      buildXlsx(data);
     } catch(err) {
       showError('Something went wrong while generating the file. Please try uploading a different file.', true);
       console.error(err);
