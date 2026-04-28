@@ -136,7 +136,7 @@
     <p class="section-label">What type of providers is this file for?</p>
     <div class="type-options">
       <button class="type-btn" id="btn-inperson" onclick="selectProviderType('inperson')">In Person Providers</button>
-      <button class="type-btn" id="btn-virtual" onclick="selectProviderType('virtual')">Virtual Providers & Preference Trainings</button>
+      <button class="type-btn" id="btn-virtual" onclick="selectProviderType('virtual')">Virtual Providers & Preference Training</button>
     </div>
   </div>
 
@@ -166,7 +166,7 @@
   let outputFilename = 'formatted.xlsx';
   let providerType = null;
 
-  const COLS_TO_REMOVE = new Set([2, 4, 5, 6, 9, 10, 11, 12, 13, 14, 15, 16, 18, 19, 20]);
+  const COLS_TO_REMOVE = new Set([2, 4, 5, 6, 8, 9, 11, 12, 13, 14, 15, 16, 18, 19, 20]);
   const COL_H_INDEX = 7;
   const COL_R_INDEX = 17;
 
