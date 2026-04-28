@@ -84,11 +84,11 @@
     .no-options { padding: 12px 14px; font-size: 13px; color: #aaa; font-style: italic; }
     .download-btn {
       display: block; width: 100%; padding: 10px; font-size: 14px; font-weight: 500;
-      font-family: inherit; background: #1a1a18; color: #fff; border: none; border-radius: 10px;
+      font-family: inherit; background: #fff; color: #1a1a18; border: 1.5px solid #1a1a18; border-radius: 10px;
       cursor: pointer; transition: background 0.12s;
     }
-    .download-btn:hover { background: #333; }
-    .download-btn:disabled { background: #999; cursor: not-allowed; }
+    .download-btn:hover { background: #f5f5f3; }
+    .download-btn:disabled { border-color: #ccc; color: #999; cursor: not-allowed; background: #fff; }
     .download-btn:active:not(:disabled) { transform: scale(0.99); }
     .preview-btn {
       display: block; width: 100%; padding: 10px; font-size: 14px; font-weight: 500;
@@ -126,7 +126,7 @@
   <div class="steps-box">
     <div class="step"><span class="step-num">1</span><span>Find your Bookings calendar</span></div>
     <div class="step"><span class="step-num">2</span><span>Near the top-right, Export and choose a date range</span></div>
-    <div class="step"><span class="step-num">3</span><span>Upload the file, and choose if the list is for 'In-person' or 'Virtual' appointments</span></div>
+    <div class="step"><span class="step-num">3</span><span>Upload the file, and choose if the list is for In-person, VPT, or Preference Setting appointments</span></div>
   </div>
   <div id="drop-zone"
     onclick="document.getElementById('file-input').click()"
@@ -144,7 +144,7 @@
     <p class="section-label">What type of providers is this file for?</p>
     <div class="type-options">
       <button class="type-btn" id="btn-inperson" onclick="selectProviderType('inperson')">In Person Providers</button>
-      <button class="type-btn" id="btn-virtual" onclick="selectProviderType('virtual')">Virtual Providers & Preference Training</button>
+      <button class="type-btn" id="btn-virtual" onclick="selectProviderType('virtual')">Virtual Providers & Preference Setting</button>
     </div>
   </div>
 
