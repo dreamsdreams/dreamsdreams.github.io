@@ -13,33 +13,34 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 h1{font-size:20px;font-weight:500;margin-bottom:0.25rem;color:#1a1a18}
 .subtitle{font-size:14px;color:#666;margin-bottom:1.25rem;line-height:1.5}
 #drop-zone{border:1.5px dashed #bbb;border-radius:12px;padding:2.5rem 1.5rem;text-align:center;cursor:pointer;transition:background 0.15s,border-color 0.15s}
-#drop-zone:hover,#drop-zone.dragover{background:#f5f5f3;border-color:#888}
+#drop-zone:hover,#drop-zone.dragover{background:#f0f5ff;border-color:#3b82f6}
 .drop-icon{font-size:32px;margin-bottom:0.5rem;line-height:1}
 .drop-title{font-size:15px;font-weight:500;margin-bottom:4px;color:#1a1a18}
 .drop-hint{font-size:13px;color:#888}
 .section-label{font-size:13px;font-weight:500;color:#1a1a18;margin-bottom:0.6rem;display:flex;align-items:center;justify-content:space-between}
-.section-label a{font-size:12px;font-weight:400;color:#888;cursor:pointer;text-decoration:none}
-.section-label a:hover{color:#1a1a18}
+.section-label a{font-size:12px;font-weight:400;color:#3b82f6;cursor:pointer;text-decoration:none}
+.section-label a:hover{color:#1d4ed8}
 .cols-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:0.5rem;margin-bottom:1.25rem}
 .col-btn{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;cursor:pointer;border:1.5px solid rgba(0,0,0,0.12);background:#fff;font-family:inherit;font-size:13px;font-weight:400;color:#1a1a18;transition:border-color 0.12s,background 0.12s;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.col-btn:hover{background:#f5f5f3;border-color:#888}
-.col-btn.selected{border-color:#1a1a18;background:#1a1a18;color:#fff}
+.col-btn:hover{background:#f0f5ff;border-color:#3b82f6}
+.col-btn.selected{border-color:#1d4ed8;background:#1d4ed8;color:#fff}
 .col-btn .chk{width:14px;height:14px;border-radius:3px;border:1.5px solid currentColor;flex-shrink:0;display:flex;align-items:center;justify-content:center}
 .col-btn.selected .chk::after{content:'';display:block;width:8px;height:8px;background:#fff;border-radius:1px;clip-path:polygon(20% 45%,0 65%,35% 100%,100% 10%,80% 0%,30% 65%)}
 .divider{border:none;border-top:0.5px solid rgba(0,0,0,0.1);margin:1.25rem 0}
-.filter-block{background:#f9f9f7;border:0.5px solid rgba(0,0,0,0.1);border-radius:10px;padding:0.85rem 1.1rem;margin-bottom:1rem}
-.filter-row{display:flex;align-items:center;gap:10px;font-size:13px;color:#1a1a18;border-bottom:0.5px solid rgba(0,0,0,0.06);padding:8px 0;cursor:pointer;user-select:none;flex-wrap:wrap}
-.filter-row:last-child{border-bottom:none;padding-bottom:0}
-.filter-row:first-child{padding-top:0}
-.filter-col-label{font-weight:500;min-width:90px;color:#555}
-.filter-values{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;margin-left:24px}
-.val-chip{display:flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;border:1px solid rgba(0,0,0,0.15);background:#fff;font-size:12px;cursor:pointer;color:#1a1a18;transition:background 0.1s}
-.val-chip:hover{background:#f5f5f3}
-.val-chip.selected{background:#1a1a18;color:#fff;border-color:#1a1a18}
-.count-badge{font-size:11px;opacity:0.6}
-.download-btn{display:block;width:100%;padding:10px;font-size:14px;font-weight:500;font-family:inherit;background:#1a1a18;color:#fff;border:none;border-radius:10px;cursor:pointer;transition:background 0.12s;margin-top:1.25rem}
-.download-btn:hover{background:#333}
-.download-btn:disabled{background:#999;cursor:not-allowed}
+.filter-block{background:#f9f9f7;border:0.5px solid rgba(0,0,0,0.1);border-radius:10px;overflow:hidden;margin-bottom:1rem}
+.filter-option{display:flex;align-items:center;gap:10px;padding:9px 14px;font-size:13px;color:#1a1a18;border-bottom:0.5px solid rgba(0,0,0,0.06);cursor:pointer;transition:background 0.1s;user-select:none}
+.filter-option:last-child{border-bottom:none}
+.filter-option:hover{background:#f0f5ff}
+.filter-option input[type=checkbox]{width:15px;height:15px;cursor:pointer;flex-shrink:0;accent-color:#1d4ed8}
+.filter-option .count{margin-left:auto;font-size:12px;color:#aaa;white-space:nowrap}
+.no-options{padding:12px 14px;font-size:13px;color:#aaa;font-style:italic}
+.filter-toggle-row{display:flex;gap:0.5rem;margin-bottom:1rem}
+.toggle-btn{flex:1;padding:8px 12px;border-radius:8px;cursor:pointer;border:1.5px solid rgba(0,0,0,0.12);background:#fff;font-family:inherit;font-size:13px;font-weight:500;color:#1a1a18;transition:border-color 0.12s,background 0.12s}
+.toggle-btn:hover{background:#f0f5ff;border-color:#3b82f6}
+.toggle-btn.selected{border-color:#1d4ed8;background:#1d4ed8;color:#fff}
+.download-btn{display:block;width:100%;padding:10px;font-size:14px;font-weight:500;font-family:inherit;background:#1d4ed8;color:#fff;border:none;border-radius:10px;cursor:pointer;transition:background 0.12s;margin-top:1.25rem}
+.download-btn:hover{background:#1e40af}
+.download-btn:disabled{background:#93c5fd;cursor:not-allowed}
 .download-btn:active:not(:disabled){transform:scale(0.99)}
 .reset-btn{display:block;width:100%;margin-top:0.5rem;padding:8px;font-size:13px;font-family:inherit;background:transparent;color:#888;border:0.5px solid rgba(0,0,0,0.15);border-radius:10px;cursor:pointer;transition:background 0.12s}
 .reset-btn:hover{background:#f0f0ee}
@@ -47,12 +48,13 @@ h1{font-size:20px;font-weight:500;margin-bottom:0.25rem;color:#1a1a18}
 .row-note{font-size:12px;color:#888;margin-top:0.75rem}
 #col-area,#filter-section,#download-section{display:none}
 .step-section{margin-top:1.25rem}
+#filter-values-area{display:none;margin-top:0.75rem}
 </style>
 </head>
 <body>
 <div class="card">
   <h1>Excel Column Picker &amp; Filter</h1>
-  <p class="subtitle">Upload any Excel or CSV file, choose which columns to keep, optionally filter rows by column values, then download a formatted table.</p>
+  <p class="subtitle">Upload any Excel or CSV file, choose which columns to keep, optionally filter by Custom Fields values, then download a formatted table.</p>
 
   <div id="drop-zone"
     onclick="document.getElementById('file-input').click()"
@@ -79,8 +81,20 @@ h1{font-size:20px;font-weight:500;margin-bottom:0.25rem;color:#1a1a18}
 
   <div id="filter-section" class="step-section">
     <hr class="divider">
-    <div class="section-label">Filter rows by column values <span style="font-size:12px;font-weight:400;color:#888">(optional — leave empty to keep all rows)</span></div>
-    <div class="filter-block" id="filter-block"></div>
+    <div class="section-label">Filter rows by Custom Fields?</div>
+    <div class="filter-toggle-row">
+      <button class="toggle-btn" id="btn-filter-yes" onclick="selectFilterMode(true)">Yes, filter by Custom Fields</button>
+      <button class="toggle-btn" id="btn-filter-no" onclick="selectFilterMode(false)">No, keep all rows</button>
+    </div>
+    <div id="filter-values-area">
+      <div class="section-label">
+        <span>Select values to include</span>
+        <span>
+          <a onclick="selectAllFilters()">Select all</a>&nbsp;·&nbsp;<a onclick="selectNoneFilters()">Clear</a>
+        </span>
+      </div>
+      <div class="filter-block" id="filter-block"></div>
+    </div>
   </div>
 
   <div id="download-section" class="step-section">
@@ -94,7 +108,9 @@ h1{font-size:20px;font-weight:500;margin-bottom:0.25rem;color:#1a1a18}
 let rawData = [];
 let headers = [];
 let colSelected = [];
-let filterState = {};
+let customFieldColIndex = -1;
+let filterMode = null; // true = filter, false = keep all
+let selectedFilterValues = new Set();
 let outputFilename = 'formatted.xlsx';
 
 function handleDrop(e){
@@ -138,16 +154,21 @@ function handleFile(file){
       }
       if(rawData.length<2){showError('File needs at least one header row and one data row.');return;}
       headers = rawData[0].map((h,i)=>(h!==null&&h!==undefined&&String(h).trim()!=='')?String(h).trim():'Column '+(i+1));
-      colSelected = headers.map(()=>true);
-      filterState = {};
+      colSelected = headers.map(()=>false); // start all unchecked
+      customFieldColIndex = headers.findIndex(h=>h.trim().toLowerCase()==='custom fields');
+      filterMode = null;
+      selectedFilterValues = new Set();
       outputFilename = file.name.replace(/\.[^.]+$/,'')+'_formatted.xlsx';
       document.getElementById('error-msg').style.display='none';
       buildColUI();
       buildFilterUI();
       updateDownloadSection();
       document.getElementById('col-area').style.display='block';
-      document.getElementById('filter-section').style.display='block';
+      document.getElementById('filter-section').style.display = customFieldColIndex !== -1 ? 'block' : 'none';
       document.getElementById('download-section').style.display='block';
+      document.getElementById('btn-filter-yes').classList.remove('selected');
+      document.getElementById('btn-filter-no').classList.remove('selected');
+      document.getElementById('filter-values-area').style.display='none';
     } catch(err){
       showError('Could not read file. Make sure it\'s a valid Excel or CSV file.');
       console.error(err);
@@ -161,10 +182,10 @@ function buildColUI(){
   grid.innerHTML='';
   headers.forEach((h,i)=>{
     const btn=document.createElement('button');
-    btn.className='col-btn selected';
+    btn.className='col-btn'; // not selected by default
     btn.innerHTML='<span class="chk"></span><span style="overflow:hidden;text-overflow:ellipsis">'+escHtml(h)+'</span>';
     btn.title=h;
-    btn.onclick=()=>{colSelected[i]=!colSelected[i];btn.classList.toggle('selected',colSelected[i]);updateFilterUI();updateDownloadSection();};
+    btn.onclick=()=>{colSelected[i]=!colSelected[i];btn.classList.toggle('selected',colSelected[i]);updateDownloadSection();};
     grid.appendChild(btn);
   });
 }
@@ -172,68 +193,65 @@ function buildColUI(){
 function buildFilterUI(){
   const block=document.getElementById('filter-block');
   block.innerHTML='';
-  headers.forEach((h,i)=>{
-    const vals={};
-    for(let r=1;r<rawData.length;r++){
-      const v=rawData[r][i];
-      const key=(v!==null&&v!==undefined&&String(v).trim()!=='')?String(v).trim():'(blank)';
-      vals[key]=(vals[key]||0)+1;
-    }
-    const keys=Object.keys(vals).sort();
-    if(keys.length<2||keys.length>200) return;
-
-    const row=document.createElement('div');
-    row.className='filter-row';
-    row.id='filter-row-'+i;
-    const label=document.createElement('span');
-    label.className='filter-col-label';
-    label.textContent=h;
-    row.appendChild(label);
-    const chips=document.createElement('div');
-    chips.className='filter-values';
-    keys.forEach(k=>{
-      const chip=document.createElement('span');
-      chip.className='val-chip';
-      chip.innerHTML=escHtml(k)+'<span class="count-badge">('+vals[k]+')</span>';
-      chip.onclick=()=>{
-        if(!filterState[i]) filterState[i]=new Set();
-        if(filterState[i].has(k)){filterState[i].delete(k);chip.classList.remove('selected');}
-        else{filterState[i].add(k);chip.classList.add('selected');}
-        if(filterState[i].size===0) delete filterState[i];
-        updateDownloadSection();
-      };
-      chips.appendChild(chip);
-    });
-    row.appendChild(chips);
-    block.appendChild(row);
-  });
-  if(block.children.length===0){
-    block.innerHTML='<div style="font-size:13px;color:#888;font-style:italic">No filterable columns found (columns with 2–200 unique values will appear here).</div>';
+  if(customFieldColIndex===-1) return;
+  const vals={};
+  for(let r=1;r<rawData.length;r++){
+    const v=rawData[r][customFieldColIndex];
+    const key=(v!==null&&v!==undefined&&String(v).trim()!=='')?String(v).trim():'(blank)';
+    vals[key]=(vals[key]||0)+1;
   }
+  const keys=Object.keys(vals).sort();
+  if(keys.length===0){
+    block.innerHTML='<div class="no-options">No values found in Custom Fields.</div>';
+    return;
+  }
+  keys.forEach(k=>{
+    const n=vals[k];
+    const label=n+' entr'+(n===1?'y':'ies');
+    const div=document.createElement('div');
+    div.className='filter-option';
+    const cb=document.createElement('input');
+    cb.type='checkbox';
+    cb.id='opt_'+encodeURIComponent(k);
+    cb.value=k;
+    cb.onchange=()=>{
+      if(cb.checked) selectedFilterValues.add(k);
+      else selectedFilterValues.delete(k);
+      updateDownloadSection();
+    };
+    const lbl=document.createElement('label');
+    lbl.htmlFor=cb.id;
+    lbl.textContent=k;
+    lbl.style.cssText='flex:1;cursor:pointer';
+    const cnt=document.createElement('span');
+    cnt.className='count';
+    cnt.textContent=label;
+    div.appendChild(cb);
+    div.appendChild(lbl);
+    div.appendChild(cnt);
+    block.appendChild(div);
+  });
 }
 
-function updateFilterUI(){
-  headers.forEach((_,i)=>{
-    const row=document.getElementById('filter-row-'+i);
-    if(!row) return;
-    const visible=colSelected[i];
-    row.style.display=visible?'':'none';
-    if(!visible&&filterState[i]){delete filterState[i];row.querySelectorAll('.val-chip').forEach(c=>c.classList.remove('selected'));}
-  });
-  const block=document.getElementById('filter-block');
-  const anyVisible=block.querySelectorAll('.filter-row:not([style*="display: none"])').length>0;
-  if(!anyVisible&&block.children.length>0){
-    block.innerHTML='<div style="font-size:13px;color:#888;font-style:italic">No filterable columns in selection.</div>';
+function selectFilterMode(doFilter){
+  filterMode=doFilter;
+  document.getElementById('btn-filter-yes').classList.toggle('selected',doFilter);
+  document.getElementById('btn-filter-no').classList.toggle('selected',!doFilter);
+  document.getElementById('filter-values-area').style.display=doFilter?'block':'none';
+  if(!doFilter){
+    selectedFilterValues=new Set();
+    document.querySelectorAll('#filter-block input[type=checkbox]').forEach(cb=>cb.checked=false);
   }
+  updateDownloadSection();
 }
 
 function getFilteredRows(){
-  const activeFilters=Object.keys(filterState).map(Number).filter(i=>filterState[i]&&filterState[i].size>0);
+  if(!filterMode || customFieldColIndex===-1 || selectedFilterValues.size===0){
+    return rawData.slice(1);
+  }
   return rawData.slice(1).filter(row=>{
-    return activeFilters.every(i=>{
-      const v=(row[i]!==null&&row[i]!==undefined&&String(row[i]).trim()!=='')?String(row[i]).trim():'(blank)';
-      return filterState[i].has(v);
-    });
+    const v=(row[customFieldColIndex]!==null&&row[customFieldColIndex]!==undefined&&String(row[customFieldColIndex]).trim()!=='')?String(row[customFieldColIndex]).trim():'(blank)';
+    return selectedFilterValues.has(v);
   });
 }
 
@@ -242,12 +260,15 @@ function updateDownloadSection(){
   const filtered=getFilteredRows();
   const note=document.getElementById('row-note');
   const btn=document.getElementById('download-btn');
+  const filterReady = filterMode===false || (filterMode===true && selectedFilterValues.size>0) || filterMode===null;
   note.textContent=keptCols.length+' column'+(keptCols.length!==1?'s':'')+' selected · '+filtered.length+' row'+(filtered.length!==1?'s':'')+' match';
   btn.disabled=keptCols.length===0||filtered.length===0;
 }
 
-function selectAllCols(){colSelected=colSelected.map(()=>true);document.querySelectorAll('.col-btn').forEach(b=>b.classList.add('selected'));updateFilterUI();updateDownloadSection();}
-function selectNoneCols(){colSelected=colSelected.map(()=>false);document.querySelectorAll('.col-btn').forEach(b=>b.classList.remove('selected'));updateFilterUI();updateDownloadSection();}
+function selectAllCols(){colSelected=colSelected.map(()=>true);document.querySelectorAll('.col-btn').forEach(b=>b.classList.add('selected'));updateDownloadSection();}
+function selectNoneCols(){colSelected=colSelected.map(()=>false);document.querySelectorAll('.col-btn').forEach(b=>b.classList.remove('selected'));updateDownloadSection();}
+function selectAllFilters(){document.querySelectorAll('#filter-block input[type=checkbox]').forEach(cb=>{cb.checked=true;selectedFilterValues.add(cb.value);});updateDownloadSection();}
+function selectNoneFilters(){document.querySelectorAll('#filter-block input[type=checkbox]').forEach(cb=>{cb.checked=false;});selectedFilterValues=new Set();updateDownloadSection();}
 
 function downloadFile(){
   const keptCols=colSelected.map((s,i)=>s?i:-1).filter(i=>i>=0);
@@ -382,14 +403,17 @@ function showError(msg,showRetry){
 }
 
 function resetTool(){
-  rawData=[];headers=[];colSelected=[];filterState={};
+  rawData=[];headers=[];colSelected=[];customFieldColIndex=-1;filterMode=null;selectedFilterValues=new Set();
   document.getElementById('col-area').style.display='none';
   document.getElementById('filter-section').style.display='none';
   document.getElementById('download-section').style.display='none';
+  document.getElementById('filter-values-area').style.display='none';
   document.getElementById('error-msg').style.display='none';
   document.getElementById('file-input').value='';
   document.getElementById('cols-grid').innerHTML='';
   document.getElementById('filter-block').innerHTML='';
+  document.getElementById('btn-filter-yes').classList.remove('selected');
+  document.getElementById('btn-filter-no').classList.remove('selected');
 }
 </script>
 </body>
