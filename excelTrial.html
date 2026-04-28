@@ -136,7 +136,7 @@
     <p class="section-label">What type of providers is this file for?</p>
     <div class="type-options">
       <button class="type-btn" id="btn-inperson" onclick="selectProviderType('inperson')">In Person Providers</button>
-      <button class="type-btn" id="btn-virtual" onclick="selectProviderType('virtual')">Virtual Providers</button>
+      <button class="type-btn" id="btn-virtual" onclick="selectProviderType('virtual')">Virtual Providers & Preference Training</button>
     </div>
   </div>
 
@@ -192,7 +192,7 @@
     const s = String(str);
     const idx = s.indexOf('_');
     if (idx === -1) return s;
-    return s.slice(idx + 1, idx + 3);
+    return 'Trainer ' + s.slice(idx + 1, idx + 3);
   }
 
   function handleDrop(e) {
