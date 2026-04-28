@@ -197,7 +197,8 @@ function buildFilterUI(){
   const vals={};
   for(let r=1;r<rawData.length;r++){
     const v=rawData[r][customFieldColIndex];
-    const key=(v!==null&&v!==undefined&&String(v).trim()!=='')?String(v).trim():'(blank)';
+    const extracted=extractBetween3rdAnd4thQuote(v);
+    const key=extracted!==''?extracted:'(blank)';
     vals[key]=(vals[key]||0)+1;
   }
   const keys=Object.keys(vals).sort();
@@ -250,7 +251,8 @@ function getFilteredRows(){
     return rawData.slice(1);
   }
   return rawData.slice(1).filter(row=>{
-    const v=(row[customFieldColIndex]!==null&&row[customFieldColIndex]!==undefined&&String(row[customFieldColIndex]).trim()!=='')?String(row[customFieldColIndex]).trim():'(blank)';
+    const raw=row[customFieldColIndex];
+    const v=extractBetween3rdAnd4thQuote(raw)||'(blank)';
     return selectedFilterValues.has(v);
   });
 }
@@ -276,7 +278,7 @@ function downloadFile(){
   const filtered=getFilteredRows();
   if(filtered.length===0){showError('No rows match the current filters.',true);return;}
   const finalHeaders=keptCols.map(i=>headers[i]);
-  const cfFinalIdx = filterMode===true && customFieldColIndex!==-1 ? keptCols.indexOf(customFieldColIndex) : -1;
+  const cfFinalIdx = customFieldColIndex!==-1 ? keptCols.indexOf(customFieldColIndex) : -1;
   const finalData=[finalHeaders,...filtered.map(row=>keptCols.map((colIdx,fi)=>{
     const val=row[colIdx];
     if(fi===cfFinalIdx) return extractBetween3rdAnd4thQuote(val);
