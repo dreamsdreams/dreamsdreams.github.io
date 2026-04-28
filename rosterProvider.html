@@ -126,7 +126,7 @@
   <div class="steps-box">
     <div class="step"><span class="step-num">1</span><span>Find your Bookings calendar</span></div>
     <div class="step"><span class="step-num">2</span><span>Near the top-right, Export and choose a date range</span></div>
-    <div class="step"><span class="step-num">3</span><span>Upload the file, and choose if the list is for In-person, VPT, or Preference Setting appointments</span></div>
+    <div class="step"><span class="step-num">3</span><span>Upload the file, and choose if the list is for 'In-person' or 'Virtual' appointments</span></div>
   </div>
   <div id="drop-zone"
     onclick="document.getElementById('file-input').click()"
@@ -144,7 +144,7 @@
     <p class="section-label">What type of providers is this file for?</p>
     <div class="type-options">
       <button class="type-btn" id="btn-inperson" onclick="selectProviderType('inperson')">In Person Providers</button>
-      <button class="type-btn" id="btn-virtual" onclick="selectProviderType('virtual')">Virtual Providers & Preference Setting</button>
+      <button class="type-btn" id="btn-virtual" onclick="selectProviderType('virtual')">Virtual Providers & Preference Training</button>
     </div>
   </div>
 
@@ -194,15 +194,17 @@
     return '';
   }
 
-  // Returns the 2 characters immediately after the first "_" in a string.
-  // e.g. "ABC_XY something" → "XY"
-  // If no "_" is found, returns the raw value as-is.
-  function twoCharsAfterFirstUnderscore(str) {
+  // From a raw value like " Surgery abc_01xyz", produces "Surgery - Trainer 01"
+  function formatStaffTrainer(str) {
     if (!str) return '';
-    const s = String(str);
-    const idx = s.indexOf('_');
-    if (idx === -1) return s;
-    return 'Trainer ' + s.slice(idx + 1, idx + 3);
+    const s = String(str).trim();
+    const firstWord = s.split(' ')[0] || '';
+    const underscoreIdx = s.indexOf('_');
+    const trainerCode = underscoreIdx === -1 ? '' : s.slice(underscoreIdx + 1, underscoreIdx + 3);
+    if (!firstWord && !trainerCode) return s;
+    if (!trainerCode) return firstWord;
+    if (!firstWord) return 'Trainer ' + trainerCode;
+    return firstWord + ' - Trainer ' + trainerCode;
   }
 
   function handleDrop(e) {
@@ -555,7 +557,7 @@
       if (customFieldColIndex !== -1 && customFieldColIndex < staffTrainerColIndex) adjustedSTIdx--;
       const newRow = row.filter((_, i) => !dropCols.has(i)).map(function(val, newColIdx) {
         if (staffTrainerColIndex !== -1 && newColIdx === adjustedSTIdx)
-          return (val !== null && val !== undefined) ? twoCharsAfterFirstUnderscore(String(val)) : val;
+          return (val !== null && val !== undefined) ? formatStaffTrainer(String(val)) : val;
         return val;
       });
       finalData.push(newRow);
