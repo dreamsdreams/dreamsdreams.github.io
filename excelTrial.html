@@ -239,6 +239,11 @@ function selectFilterMode(doFilter){
   document.getElementById('btn-filter-yes').classList.toggle('selected',doFilter);
   document.getElementById('btn-filter-no').classList.toggle('selected',!doFilter);
   document.getElementById('filter-values-area').style.display=doFilter?'block':'none';
+  if(doFilter && customFieldColIndex!==-1){
+    colSelected[customFieldColIndex]=true;
+    const btns=document.querySelectorAll('.col-btn');
+    if(btns[customFieldColIndex]) btns[customFieldColIndex].classList.add('selected');
+  }
   if(!doFilter){
     selectedFilterValues=new Set();
     document.querySelectorAll('#filter-block input[type=checkbox]').forEach(cb=>cb.checked=false);
