@@ -34,7 +34,7 @@
       border: 0.5px solid rgba(0,0,0,0.12);
       padding: 2rem;
       width: 100%;
-      max-width: 600px;
+      max-width: 640px;
     }
 
     h1 { font-size: 20px; font-weight: 500; margin-bottom: 0.25rem; color: #1a1a18; }
@@ -82,23 +82,34 @@
       gap: 10px;
       padding: 4px 4px;
       border-bottom: 0.5px solid rgba(0,0,0,0.06);
-      min-height: 30px;
+      min-height: 32px;
+      background: #f9f9f7;
     }
+    .list-row:nth-child(even) { background: #efefed; }
     .list-row:last-child { border-bottom: none; }
 
-    .list-value {
+    .list-name {
       flex: 1;
       font-size: 14px;
       color: #1a1a18;
-      font-family: inherit;
       line-height: 1.4;
-      word-break: break-all;
+      word-break: break-word;
+    }
+
+    .list-id {
+      font-size: 13px;
+      color: #666;
+      white-space: nowrap;
+      flex-shrink: 0;
+      min-width: 80px;
+      text-align: right;
     }
 
     .list-checks {
       display: flex;
-      gap: 8px;
       flex-shrink: 0;
+      width: 120px;
+      justify-content: space-evenly;
     }
 
     .list-checks input[type="checkbox"] {
@@ -121,27 +132,31 @@
   <a class="back-btn" href="https://www.haydens.cool/">← Home</a>
   <div class="card">
     <div style="background:#f5f5f3;border:0.5px solid rgba(0,0,0,0.1);border-radius:12px;padding:1rem 1.25rem;margin-bottom:1.5rem;">
-      <p style="font-size:13px;font-weight:500;color:#888;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:0.75rem;">How to use</p>
+      <p style="font-size:13px;color:#888;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:0.75rem;">How to use</p>
       <ol style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px;">
         <li style="display:flex;align-items:flex-start;gap:10px;font-size:14px;">
-          <span style="min-width:22px;height:22px;border-radius:50%;background:#fff;border:0.5px solid rgba(0,0,0,0.2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;color:#666;flex-shrink:0;margin-top:1px;">1</span>
-          <span>In Healthstream, go to <strong style="font-weight:500;">Reports</strong> → <strong style="font-weight:500;">Class Contacts</strong></span>
+          <span style="min-width:22px;height:22px;border-radius:50%;background:#fff;border:0.5px solid rgba(0,0,0,0.2);display:flex;align-items:center;justify-content:center;font-size:12px;color:#666;flex-shrink:0;margin-top:1px;">1</span>
+          <span>In Healthstream, go to Reports → Education Reports → Class Roster and Sign-in Sheet</span>
         </li>
         <li style="display:flex;align-items:flex-start;gap:10px;font-size:14px;">
-          <span style="min-width:22px;height:22px;border-radius:50%;background:#fff;border:0.5px solid rgba(0,0,0,0.2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;color:#666;flex-shrink:0;margin-top:1px;">2</span>
-          <span><strong style="font-weight:500;">Select the class</strong> you want to grade</span>
+          <span style="min-width:22px;height:22px;border-radius:50%;background:#fff;border:0.5px solid rgba(0,0,0,0.2);display:flex;align-items:center;justify-content:center;font-size:12px;color:#666;flex-shrink:0;margin-top:1px;">2</span>
+          <span>Select the class you want to grade</span>
         </li>
         <li style="display:flex;align-items:flex-start;gap:10px;font-size:14px;">
-          <span style="min-width:22px;height:22px;border-radius:50%;background:#fff;border:0.5px solid rgba(0,0,0,0.2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;color:#666;flex-shrink:0;margin-top:1px;">3</span>
-          <span>Choose <strong style="font-weight:500;">Registered Only</strong> for class status, then press <strong style="font-weight:500;">Continue</strong></span>
+          <span style="min-width:22px;height:22px;border-radius:50%;background:#fff;border:0.5px solid rgba(0,0,0,0.2);display:flex;align-items:center;justify-content:center;font-size:12px;color:#666;flex-shrink:0;margin-top:1px;">3</span>
+          <span>Press Continue</span>
         </li>
         <li style="display:flex;align-items:flex-start;gap:10px;font-size:14px;">
-          <span style="min-width:22px;height:22px;border-radius:50%;background:#fff;border:0.5px solid rgba(0,0,0,0.2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;color:#666;flex-shrink:0;margin-top:1px;">4</span>
-          <span>In the top right, select <strong style="font-weight:500;">Export</strong> → <strong style="font-weight:500;">CSV</strong></span>
+          <span style="min-width:22px;height:22px;border-radius:50%;background:#fff;border:0.5px solid rgba(0,0,0,0.2);display:flex;align-items:center;justify-content:center;font-size:12px;color:#666;flex-shrink:0;margin-top:1px;">4</span>
+          <span>In the top right, select Export → CSV</span>
         </li>
         <li style="display:flex;align-items:flex-start;gap:10px;font-size:14px;">
-          <span style="min-width:22px;height:22px;border-radius:50%;background:#fff;border:0.5px solid rgba(0,0,0,0.2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;color:#666;flex-shrink:0;margin-top:1px;">5</span>
+          <span style="min-width:22px;height:22px;border-radius:50%;background:#fff;border:0.5px solid rgba(0,0,0,0.2);display:flex;align-items:center;justify-content:center;font-size:12px;color:#666;flex-shrink:0;margin-top:1px;">5</span>
           <span>Add the file below</span>
+        </li>
+        <li style="display:flex;align-items:flex-start;gap:10px;font-size:14px;">
+          <span style="min-width:22px;height:22px;border-radius:50%;background:#fff;border:0.5px solid rgba(0,0,0,0.2);display:flex;align-items:center;justify-content:center;font-size:12px;color:#666;flex-shrink:0;margin-top:1px;">5</span>
+          <span>This list will be Alphabetized, make sure after you Bulk Grade to alphabetize the column in MyPath for easier comparison</span>
         </li>
       </ol>
     </div>
@@ -155,8 +170,8 @@
       ondragleave="this.classList.remove('dragover')"
       ondrop="handleDrop(event)">
       <div class="drop-icon">📄</div>
-      <p class="drop-title">Drop your Excel or CSV file here</p>
-      <p class="drop-hint">or click to browse — .xlsx, .xls, .csv supported</p>
+      <p class="drop-title">Drop your CSV file here</p>
+      <p class="drop-hint">or click to browse — .csv supported</p>
       <input type="file" id="file-input" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleFile(this.files[0])">
     </div>
 
@@ -164,13 +179,20 @@
 
     <div id="result-area">
       <div class="result-header">
-        <div>
-          <span class="result-title">Results</span>
-          <span class="result-count" id="result-count"></span>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <div>
+            <span class="result-title">Results</span>
+            <span class="result-count" id="result-count"></span>
+          </div>
+          <div class="btn-group">
+            <button onclick="copyList(this)">Copy Bulk Names List</button>
+          </div>
         </div>
-        <div class="btn-group">
-          <button onclick="copyList(this)">Copy list</button>
-        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;padding:4px 18px 4px 8px;margin-bottom:2px;">
+        <span style="flex:1;"></span>
+        <span style="min-width:80px;"></span>
+        <span style="width:120px;font-size:11px;color:#888;text-align:center;white-space:nowrap;">Missing Competencies?</span>
       </div>
       <div id="list-container"></div>
     </div>
@@ -179,7 +201,7 @@
   </div>
 
   <script>
-    let extractedValues = [];
+    let extractedRows = [];
 
     function handleDrop(e) {
       e.preventDefault();
@@ -197,41 +219,63 @@
           const wb = XLSX.read(data, { type: 'array' });
           const ws = wb.Sheets[wb.SheetNames[0]];
           const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
-          const colJ = 9;
-          const values = [];
+
+          const colH = 7; // H = index 7
+          const colK = 10; // K = index 10
+          const rows = [];
 
           for (let row = 1; row <= range.e.r; row++) {
-            const cellAddr = XLSX.utils.encode_cell({ r: row, c: colJ });
-            const cell = ws[cellAddr];
-            if (!cell || cell.v === undefined || cell.v === null || cell.v === '') break;
-            values.push(cell.v);
+            const nameCell = ws[XLSX.utils.encode_cell({ r: row, c: colH })];
+            const idCell   = ws[XLSX.utils.encode_cell({ r: row, c: colK })];
+
+            const rawName = nameCell && nameCell.v !== undefined && nameCell.v !== null ? String(nameCell.v).trim() : '';
+            if (!rawName) break;
+
+            const userId = idCell && idCell.v !== undefined && idCell.v !== null ? String(idCell.v).trim() : '';
+
+            // Flip "Last, First" → "First Last"
+            const parts = rawName.split(',');
+            let displayName;
+            if (parts.length >= 2) {
+              displayName = parts[1].trim() + ' ' + parts[0].trim();
+            } else {
+              displayName = rawName;
+            }
+
+            rows.push({ name: displayName, id: userId });
           }
 
-          extractedValues = values;
-          showResults(values);
+          extractedRows = rows;
+          showResults(rows);
           document.getElementById('error-msg').style.display = 'none';
         } catch(err) {
-          showError('Could not read file. Make sure it\'s a valid Excel or CSV file.');
+          showError('Could not read file. Make sure it\'s a valid CSV file.');
         }
       };
       reader.readAsArrayBuffer(file);
     }
 
-    function showResults(values) {
-      document.getElementById('result-count').textContent = values.length + ' value' + (values.length !== 1 ? 's' : '') + ' found';
+    function showResults(rows) {
+      document.getElementById('result-count').textContent =
+        rows.length + ' person' + (rows.length !== 1 ? 's' : '') + ' found';
+
       const container = document.getElementById('list-container');
       container.innerHTML = '';
 
-      if (values.length === 0) {
-        container.textContent = 'No values found in column J starting from row 2.';
+      if (rows.length === 0) {
+        container.textContent = 'No names found in column H starting from row 2.';
       } else {
-        values.forEach(function(v) {
+        rows.forEach(function(r) {
           const row = document.createElement('div');
           row.className = 'list-row';
 
-          const val = document.createElement('span');
-          val.className = 'list-value';
-          val.textContent = v + ',';
+          const nameEl = document.createElement('span');
+          nameEl.className = 'list-name';
+          nameEl.textContent = r.name + ',';
+
+          const idEl = document.createElement('span');
+          idEl.className = 'list-id';
+          idEl.textContent = r.id;
 
           const checks = document.createElement('div');
           checks.className = 'list-checks';
@@ -243,7 +287,9 @@
 
           checks.appendChild(cb1);
           checks.appendChild(cb2);
-          row.appendChild(val);
+
+          row.appendChild(nameEl);
+          row.appendChild(idEl);
           row.appendChild(checks);
           container.appendChild(row);
         });
@@ -261,15 +307,15 @@
     }
 
     function copyList(btn) {
-      const text = extractedValues.map(function(v) { return v + ','; }).join('\n');
+      const text = extractedRows.map(function(r) { return r.name + ','; }).join('\n');
       navigator.clipboard.writeText(text).then(function() {
         btn.textContent = 'Copied!';
-        setTimeout(function() { btn.textContent = 'Copy list'; }, 1500);
+        setTimeout(function() { btn.textContent = 'Copy Bulk Names List'; }, 1500);
       });
     }
 
     function resetTool() {
-      extractedValues = [];
+      extractedRows = [];
       document.getElementById('list-container').innerHTML = '';
       document.getElementById('result-area').style.display = 'none';
       document.getElementById('reset-btn').style.display = 'none';
