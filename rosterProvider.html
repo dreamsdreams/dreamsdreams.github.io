@@ -170,17 +170,22 @@
 </div>
 
 <script>
-  let cleanedData = [];
-  let customFieldColIndex = -1;
-  let staffTrainerColIndex = -1;
+  // ── State ─────────────────────────────────────────────────────────────────
+  // rawData holds EVERY column exactly as read from the file (only column A
+  // dates are converted to readable text). Each button selects the columns it
+  // wants from rawData, so there is no shared column-removal step anymore.
+  let rawData = [];
   let outputFilename = 'formatted.xlsx';
   let providerType = null;
 
-  const COLS_TO_REMOVE = new Set([2, 4, 5, 6, 9, 11, 12, 13, 14, 15, 16, 18, 19, 20]);
-  const COL_H_INDEX = 7;
-  const COL_I_INDEX = 8;
-  const COL_R_INDEX = 17;
+  // Original (pre-removal) column indices, 0-based:
+  //   A=0 B=1 C=2 D=3 E=4 F=5 G=6 H=7 I=8 J=9 K=10 L=11 M=12 N=13 O=14 P=15 Q=16 R=17
+  const COL_A = 0;
+  const COL_R = 17;
+  const KEEP_INPERSON = [0, 1, 3, 6, 10, 17]; // A, B, D, G, K, R
+  const KEEP_VIRTUAL  = [0, 1, 3, 6, 8];      // A, B, D, G, I  (R used to filter, then dropped)
 
+  // ── Value helpers ─────────────────────────────────────────────────────────
   function extractBetween3rdAnd4thQuote(str) {
     if (!str) return '';
     const s = String(str);
@@ -195,24 +200,19 @@
     return '';
   }
 
-  function extractBetweenFirstAndSecondSpace(str) {
-    if (!str) return '';
-    const s = String(str);
-    const first = s.indexOf(' ');
-    if (first === -1) return s;
-    const second = s.indexOf(' ', first + 1);
-    if (second === -1) return s.slice(first + 1);
-    return s.slice(first + 1, second);
+  // The facility value used for the virtual filter: column R with the quote
+  // extraction applied, so the checklist shows readable facility names.
+  function facilityKey(row) {
+    const raw = row[COL_R];
+    const extracted = (raw !== null && raw !== undefined) ? extractBetween3rdAnd4thQuote(String(raw)) : '';
+    return extracted.trim() !== '' ? extracted.trim() : '(blank)';
   }
 
-  function twoCharsAfterFirstUnderscore(str) {
-    if (!str) return '';
-    const s = String(str);
-    const idx = s.indexOf('_');
-    if (idx === -1) return s;
-    return 'Trainer ' + s.slice(idx + 1, idx + 3);
+  function pick(row, indices) {
+    return indices.map(i => (row[i] !== undefined ? row[i] : null));
   }
 
+  // ── File handling ─────────────────────────────────────────────────────────
   function handleDrop(e) {
     e.preventDefault();
     document.getElementById('drop-zone').classList.remove('dragover');
@@ -233,10 +233,7 @@
         } else {
           wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array', cellDates: true });
         }
-        const result = processWorkbook(wb);
-        cleanedData = result.data;
-        customFieldColIndex = result.customFieldColIndex;
-        staffTrainerColIndex = result.staffTrainerColIndex;
+        rawData = processWorkbook(wb);
         outputFilename = file.name.replace(/\.[^.]+$/, '') + '_formatted.xlsx';
 
         providerType = null;
@@ -269,72 +266,79 @@
     }
   }
 
+  // Read every column as-is; only make column A dates human-readable.
+  // (Last sheet in the workbook wins, matching the original behavior.)
   function processWorkbook(wb) {
-    let allData = [], cfColIdx = -1, stColIdx = -1;
+    let allData = [];
     wb.SheetNames.forEach(function(sheetName) {
       const ws = wb.Sheets[sheetName];
       if (!ws['!ref']) return;
       const range = XLSX.utils.decode_range(ws['!ref']);
       const newData = [];
-      let tempIdx = 0, cfNewIdx = -1, stNewIdx = -1;
-      for (let c = range.s.c; c <= range.e.c; c++) {
-        if (!COLS_TO_REMOVE.has(c)) {
-          if (c === COL_R_INDEX) cfNewIdx = tempIdx;
-          if (c === COL_H_INDEX) stNewIdx = tempIdx;
-          tempIdx++;
-        }
-      }
-      cfColIdx = cfNewIdx;
-      stColIdx = stNewIdx;
       for (let r = range.s.r; r <= range.e.r; r++) {
         const newRow = [];
         for (let c = range.s.c; c <= range.e.c; c++) {
-          if (!COLS_TO_REMOVE.has(c)) {
-            const cell = ws[XLSX.utils.encode_cell({ r, c })];
-            let val = cell ? cell.v : null;
-
-            if (c === COL_H_INDEX) {
-              if (r === range.s.r) val = 'Staff Trainer';
-            }
-
-            if (c === COL_I_INDEX) {
-              if (r !== range.s.r && val !== null && val !== undefined) {
-                val = extractBetweenFirstAndSecondSpace(String(val));
-              }
-            }
-
-            if (c === COL_R_INDEX) {
-              if (r === range.s.r) val = 'Custom Fields';
-              else if (val !== null && val !== undefined) val = extractBetween3rdAnd4thQuote(String(val));
-            }
-
-            if (c === 0 && val instanceof Date) val = val.toLocaleString();
-            newRow.push(val);
-          }
+          const cell = ws[XLSX.utils.encode_cell({ r, c })];
+          let val = cell ? cell.v : null;
+          if (c === COL_A && val instanceof Date) val = val.toLocaleString();
+          newRow.push(val);
         }
         newData.push(newRow);
       }
       allData = newData;
     });
-    return { data: allData, customFieldColIndex: cfColIdx, staffTrainerColIndex: stColIdx };
+    return allData;
   }
 
+  // ── Data builders ─────────────────────────────────────────────────────────
+
+  // IN PERSON: keep A, B, D, G, K, R. In column R, replace the value with the
+  // text between the 3rd and 4th quotation marks. No filtering, no other edits.
+  // The header row is left untouched (only data rows get the quote extraction).
+  function buildInPersonData() {
+    if (!rawData || rawData.length <= 1) return null;
+    const rPos = KEEP_INPERSON.indexOf(COL_R); // position of column R in the kept set
+    const out = [];
+    for (let r = 0; r < rawData.length; r++) {
+      const picked = pick(rawData[r], KEEP_INPERSON);
+      if (r > 0 && rPos !== -1) {
+        const v = picked[rPos];
+        picked[rPos] = (v !== null && v !== undefined) ? extractBetween3rdAnd4thQuote(String(v)) : v;
+      }
+      out.push(picked);
+    }
+    return out;
+  }
+
+  // VIRTUAL / PREFERENCE SETTING: keep A, B, D, G, I. Column R is used only to
+  // build the facility filter and to match selected rows, then dropped.
+  function buildVirtualData() {
+    const selected = new Set(getSelectedOptions());
+    if (selected.size === 0 || !rawData || rawData.length <= 1) return null;
+    const out = [ pick(rawData[0], KEEP_VIRTUAL) ];
+    for (let r = 1; r < rawData.length; r++) {
+      if (!selected.has(facilityKey(rawData[r]))) continue;
+      out.push(pick(rawData[r], KEEP_VIRTUAL));
+    }
+    return out.length > 1 ? out : null;
+  }
+
+  // ── Facility filter UI (virtual path) ─────────────────────────────────────
   function buildFilterUI() {
     const container = document.getElementById('filter-options');
     container.innerHTML = '';
-    if (customFieldColIndex === -1 || cleanedData.length <= 1) {
-      container.innerHTML = '<div class="no-options">No Custom Fields column found.</div>';
+    if (!rawData || rawData.length <= 1) {
+      container.innerHTML = '<div class="no-options">No data found.</div>';
       return;
     }
     const counts = {};
-    for (let r = 1; r < cleanedData.length; r++) {
-      const val = cleanedData[r][customFieldColIndex];
-      const key = (val !== null && val !== undefined && String(val).trim() !== '') ? String(val).trim() : '(blank)';
+    for (let r = 1; r < rawData.length; r++) {
+      const key = facilityKey(rawData[r]);
       counts[key] = (counts[key] || 0) + 1;
     }
     const options = Object.keys(counts).sort();
     if (options.length === 0) {
-      container.innerHTML = '<div class="no-options">No values found in Custom Fields.</div>';
+      container.innerHTML = '<div class="no-options">No values found in the facility column.</div>';
     } else {
       options.forEach(function(opt) {
         const n = counts[opt];
@@ -371,11 +375,7 @@
       btn.disabled = false;
       prevBtn.disabled = false;
       const selSet = new Set(selected);
-      const matching = cleanedData.slice(1).filter(row => {
-        const val = (row[customFieldColIndex] !== null && row[customFieldColIndex] !== undefined)
-          ? String(row[customFieldColIndex]).trim() : '(blank)';
-        return selSet.has(val);
-      }).length;
+      const matching = rawData.slice(1).filter(row => selSet.has(facilityKey(row))).length;
       note.textContent = selected.length + ' option' + (selected.length > 1 ? 's' : '') + ' selected — ' + matching + ' matching row' + (matching !== 1 ? 's' : '');
     }
   }
@@ -383,6 +383,31 @@
   function selectAll() { document.querySelectorAll('#filter-options input[type="checkbox"]').forEach(cb => cb.checked = true); updateDownloadBtn(); }
   function selectNone() { document.querySelectorAll('#filter-options input[type="checkbox"]').forEach(cb => cb.checked = false); updateDownloadBtn(); }
 
+  // ── Banner title (virtual path) ───────────────────────────────────────────
+  function findServiceColIndex(headerRow) {
+    for (let i = 0; i < headerRow.length; i++) {
+      if (headerRow[i] !== null && headerRow[i] !== undefined &&
+          String(headerRow[i]).trim().toLowerCase() === 'service') return i;
+    }
+    return -1;
+  }
+
+  // Uses the first row matching the current facility selection to decide
+  // between "Preference Settings" and "Virtual Providers".
+  function getVirtualBannerTitle() {
+    if (!rawData || rawData.length < 2) return 'Virtual Providers';
+    const serviceIdx = findServiceColIndex(rawData[0]);
+    if (serviceIdx === -1) return 'Virtual Providers';
+    const selected = new Set(getSelectedOptions());
+    for (let r = 1; r < rawData.length; r++) {
+      if (!selected.has(facilityKey(rawData[r]))) continue;
+      const sv = String(rawData[r][serviceIdx] || '').trim();
+      return sv.toLowerCase().startsWith('preference') ? 'Preference Settings' : 'Virtual Providers';
+    }
+    return 'Virtual Providers';
+  }
+
+  // ── XLSX builder ──────────────────────────────────────────────────────────
   function colLetter(n) {
     let s = ''; n++;
     while (n > 0) { n--; s = String.fromCharCode(65 + (n % 26)) + s; n = Math.floor(n / 26); }
@@ -536,67 +561,7 @@
       });
   }
 
-  // ── Shared data builders ──────────────────────────────────────────────────
-
-  function buildInPersonData() {
-    if (!cleanedData || cleanedData.length <= 1) return null;
-    const dropCols = new Set();
-    if (staffTrainerColIndex !== -1) dropCols.add(staffTrainerColIndex);
-    const finalData = cleanedData.map(row => row.filter((_, i) => !dropCols.has(i)));
-    if (customFieldColIndex !== -1) {
-      let adjustedCFIdx = customFieldColIndex;
-      if (staffTrainerColIndex !== -1 && staffTrainerColIndex < customFieldColIndex) adjustedCFIdx--;
-      if (finalData[0][adjustedCFIdx] !== undefined) finalData[0][adjustedCFIdx] = 'Specialty';
-    }
-    return finalData;
-  }
-
-  function buildVirtualData() {
-    const selected = new Set(getSelectedOptions());
-    if (selected.size === 0) return null;
-    const dropCols = new Set();
-    if (customFieldColIndex !== -1) dropCols.add(customFieldColIndex);
-    const finalData = [];
-    finalData.push(cleanedData[0].filter((_, i) => !dropCols.has(i)));
-    for (let r = 1; r < cleanedData.length; r++) {
-      const row = cleanedData[r];
-      const cfVal = (row[customFieldColIndex] !== null && row[customFieldColIndex] !== undefined)
-        ? String(row[customFieldColIndex]).trim() : '(blank)';
-      if (!selected.has(cfVal)) continue;
-      let adjustedSTIdx = staffTrainerColIndex;
-      if (customFieldColIndex !== -1 && customFieldColIndex < staffTrainerColIndex) adjustedSTIdx--;
-      const newRow = row.filter((_, i) => !dropCols.has(i)).map(function(val, newColIdx) {
-        if (staffTrainerColIndex !== -1 && newColIdx === adjustedSTIdx)
-          return (val !== null && val !== undefined) ? twoCharsAfterFirstUnderscore(String(val)) : val;
-        return val;
-      });
-      finalData.push(newRow);
-    }
-    return finalData.length > 1 ? finalData : null;
-  }
-
-  // ── Banner title helpers ──────────────────────────────────────────────────
-
-  function findServiceColIndex(headerRow) {
-    for (let i = 0; i < headerRow.length; i++) {
-      if (headerRow[i] !== null && headerRow[i] !== undefined &&
-          String(headerRow[i]).trim().toLowerCase() === 'service') return i;
-    }
-    return -1;
-  }
-
-  function getVirtualBannerTitle(data) {
-    if (!data || data.length < 2) return 'Virtual Providers';
-    const serviceIdx = findServiceColIndex(data[0]);
-    if (serviceIdx === -1) return 'Virtual Providers';
-    const firstServiceVal = String(data[1][serviceIdx] || '').trim();
-    return firstServiceVal.toLowerCase().startsWith('preference')
-      ? 'Preference Settings'
-      : 'Virtual Providers';
-  }
-
   // ── Print preview ─────────────────────────────────────────────────────────
-
   function openPrintPreview(data, pageTitle, bannerTitle) {
     if (!data || data.length <= 1) { showError('No data to preview.', true); return; }
     const headers = data[0];
@@ -684,14 +649,13 @@
     try {
       const data = buildVirtualData();
       if (!data) { showError('No rows matched the selected filters.', true); return; }
-      const bannerTitle = getVirtualBannerTitle(data);
+      const bannerTitle = getVirtualBannerTitle();
       const pageTitle = outputFilename.replace('_formatted.xlsx', '') + ' — Virtual Roster';
       openPrintPreview(data, pageTitle, bannerTitle);
     } catch(err) { showError('Something went wrong during preview.', true); console.error(err); }
   }
 
   // ── Download functions ────────────────────────────────────────────────────
-
   function downloadInPerson() {
     try {
       const data = buildInPersonData();
@@ -722,7 +686,7 @@
   }
 
   function resetTool() {
-    cleanedData = []; customFieldColIndex = -1; staffTrainerColIndex = -1; providerType = null;
+    rawData = []; providerType = null;
     document.getElementById('provider-type-area').style.display = 'none';
     document.getElementById('inperson-area').style.display = 'none';
     document.getElementById('filter-area').style.display = 'none';
