@@ -62,6 +62,10 @@
     }
 
     #filter-area { display: none; margin-top: 1.25rem; }
+    .filter-question {
+      background: #f9f9f7; border: 0.5px solid rgba(0,0,0,0.1); border-radius: 10px;
+      padding: 0.85rem 1.1rem; margin-bottom: 1rem;
+    }
     .filter-label {
       font-size: 13px; font-weight: 500; color: #1a1a18; margin-bottom: 0.6rem;
       display: flex; align-items: center; justify-content: space-between;
@@ -69,7 +73,8 @@
     .filter-label a { font-size: 12px; font-weight: 400; color: #888; cursor: pointer; text-decoration: none; }
     .filter-label a:hover { color: #1a1a18; }
     #filter-options {
-      border: 0.5px solid rgba(0,0,0,0.12); border-radius: 10px; overflow: hidden; margin-bottom: 1rem;
+      border: 0.5px solid rgba(0,0,0,0.1); border-radius: 8px; overflow: hidden;
+      margin-bottom: 0.75rem; background: #fff;
     }
     .filter-option {
       display: flex; align-items: center; gap: 10px; padding: 9px 14px; font-size: 13px;
@@ -93,6 +98,7 @@
       padding: 10px 14px; background: #fcebeb; border-radius: 8px;
     }
     .selected-note { font-size: 12px; color: #888; margin-bottom: 0.75rem; }
+    .filter-question .selected-note { margin-bottom: 0; }
 
     .tz-question {
       background: #f9f9f7; border: 0.5px solid rgba(0,0,0,0.1); border-radius: 10px;
@@ -145,14 +151,16 @@
   </div>
 
   <div id="filter-area">
-    <div class="filter-label">
-      <span>Filter by Facility</span>
-      <span>
-        <a onclick="selectAll()">Select all</a>&nbsp;·&nbsp;<a onclick="selectNone()">Clear</a>
-      </span>
+    <div class="filter-question">
+      <div class="filter-label">
+        <span>Filter by Facility</span>
+        <span>
+          <a onclick="selectAll()">Select all</a>&nbsp;·&nbsp;<a onclick="selectNone()">Clear</a>
+        </span>
+      </div>
+      <div id="filter-options"></div>
+      <p class="selected-note" id="selected-note"></p>
     </div>
-    <div id="filter-options"></div>
-    <p class="selected-note" id="selected-note"></p>
     <div class="tz-question">
       <p class="tz-text">The bookings calendar for VPT & Preference Settings always export as Central Time. <br>Do you want to convert it to Eastern Time?</p>
       <label class="tz-check" for="convert-tz">
