@@ -110,6 +110,14 @@
     }
     .selected-note { font-size: 12px; color: #888; margin-bottom: 0.75rem; }
 
+    .tz-question {
+      background: #f9f9f7; border: 0.5px solid rgba(0,0,0,0.1); border-radius: 10px;
+      padding: 0.85rem 1.1rem; margin-bottom: 1rem;
+    }
+    .tz-text { font-size: 13px; color: #444; line-height: 1.5; margin-bottom: 0.6rem; }
+    .tz-check { display: flex; align-items: center; gap: 10px; font-size: 13px; color: #1a1a18; cursor: pointer; user-select: none; }
+    .tz-check input[type="checkbox"] { width: 15px; height: 15px; cursor: pointer; flex-shrink: 0; accent-color: #1a1a18; }
+
     #inperson-area { display: none; margin-top: 1.25rem; }
     .inperson-note {
       font-size: 13px; color: #555; background: #f9f9f7;
@@ -163,6 +171,13 @@
     </div>
     <div id="filter-options"></div>
     <p class="selected-note" id="selected-note"></p>
+    <div class="tz-question">
+      <p class="tz-text">These types of appointments always export as Central Time. Do you want to convert it to Eastern Time?</p>
+      <label class="tz-check" for="convert-tz">
+        <input type="checkbox" id="convert-tz">
+        <span>Yes — convert Central → Eastern (move all times up 1 hour)</span>
+      </label>
+    </div>
     <button class="preview-btn" id="preview-btn" onclick="previewFile()" disabled>Preview &amp; Print</button>
     <button class="download-btn" id="download-btn" onclick="downloadFile()" disabled>Download formatted file (.xlsx)</button>
     <button class="reset-btn" onclick="resetTool()">Upload another file</button>
@@ -225,6 +240,24 @@
     return extracted.trim() !== '' ? extracted.trim() : '(blank)';
   }
 
+  // Format the column A datetime for output. When `convert` is true, the time
+  // is shifted forward one hour (Central -> Eastern). Non-date values are left
+  // untouched so header text or odd cells pass through safely.
+  function formatDateA(val, convert) {
+    if (val === null || val === undefined || val === '') return val;
+    let d = null;
+    if (val instanceof Date) d = new Date(val.getTime());
+    else { const p = new Date(String(val)); if (!isNaN(p.getTime())) d = p; }
+    if (!d) return val;
+    if (convert) d = new Date(d.getTime() + 60 * 60 * 1000);
+    return d.toLocaleString();
+  }
+
+  function isConvertTz() {
+    const el = document.getElementById('convert-tz');
+    return !!(el && el.checked);
+  }
+
   function pick(row, indices) {
     return indices.map(i => (row[i] !== undefined ? row[i] : null));
   }
@@ -256,6 +289,8 @@
         providerType = null;
         document.getElementById('btn-inperson').classList.remove('selected');
         document.getElementById('btn-virtual').classList.remove('selected');
+        const tzBox = document.getElementById('convert-tz');
+        if (tzBox) tzBox.checked = false;
         document.getElementById('provider-type-area').style.display = 'block';
         document.getElementById('inperson-area').style.display = 'none';
         document.getElementById('filter-area').style.display = 'none';
@@ -297,7 +332,6 @@
         for (let c = range.s.c; c <= range.e.c; c++) {
           const cell = ws[XLSX.utils.encode_cell({ r, c })];
           let val = cell ? cell.v : null;
-          if (c === COL_A && val instanceof Date) val = val.toLocaleString();
           newRow.push(val);
         }
         newData.push(newRow);
@@ -314,12 +348,14 @@
   // The header row is left untouched (only data rows get the quote extraction).
   function buildInPersonData() {
     if (!rawData || rawData.length <= 1) return null;
+    const aPos = KEEP_INPERSON.indexOf(COL_A); // position of column A in the kept set
     const rPos = KEEP_INPERSON.indexOf(COL_R); // position of column R in the kept set
     const gPos = KEEP_INPERSON.indexOf(COL_G); // position of column G in the kept set
     const out = [];
     for (let r = 0; r < rawData.length; r++) {
       const picked = pick(rawData[r], KEEP_INPERSON);
       if (r > 0) {
+        if (aPos !== -1) picked[aPos] = formatDateA(picked[aPos], false);
         if (rPos !== -1) {
           const v = picked[rPos];
           picked[rPos] = (v !== null && v !== undefined) ? extractBetween3rdAnd4thQuote(String(v)) : v;
@@ -339,10 +375,14 @@
   function buildVirtualData() {
     const selected = new Set(getSelectedOptions());
     if (selected.size === 0 || !rawData || rawData.length <= 1) return null;
+    const convert = isConvertTz();
+    const aPos = KEEP_VIRTUAL.indexOf(COL_A); // position of column A in the kept set
     const out = [ pick(rawData[0], KEEP_VIRTUAL) ];
     for (let r = 1; r < rawData.length; r++) {
       if (!selected.has(facilityKey(rawData[r]))) continue;
-      out.push(pick(rawData[r], KEEP_VIRTUAL));
+      const picked = pick(rawData[r], KEEP_VIRTUAL);
+      if (aPos !== -1) picked[aPos] = formatDateA(picked[aPos], convert);
+      out.push(picked);
     }
     return out.length > 1 ? out : null;
   }
@@ -717,6 +757,8 @@
     document.getElementById('error-msg').style.display = 'none';
     document.getElementById('file-input').value = '';
     document.getElementById('filter-options').innerHTML = '';
+    const tzBox = document.getElementById('convert-tz');
+    if (tzBox) tzBox.checked = false;
     document.getElementById('btn-inperson').classList.remove('selected');
     document.getElementById('btn-virtual').classList.remove('selected');
   }
