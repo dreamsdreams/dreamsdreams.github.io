@@ -181,6 +181,7 @@
   // Original (pre-removal) column indices, 0-based:
   //   A=0 B=1 C=2 D=3 E=4 F=5 G=6 H=7 I=8 J=9 K=10 L=11 M=12 N=13 O=14 P=15 Q=16 R=17
   const COL_A = 0;
+  const COL_G = 6;
   const COL_R = 17;
   const KEEP_INPERSON = [0, 1, 3, 6, 10, 17]; // A, B, D, G, K, R
   const KEEP_VIRTUAL  = [0, 1, 3, 6, 8];      // A, B, D, G, I  (R used to filter, then dropped)
@@ -198,6 +199,22 @@
       }
     }
     return '';
+  }
+
+  // Keep everything from the start of the string up to and INCLUDING the 2nd
+  // digit, then stop.  e.g. "kjfslkfj01@gmail.com" -> "kjfslkfj01".
+  // If the string has fewer than 2 digits, it's returned unchanged.
+  function truncateThroughSecondDigit(str) {
+    if (!str) return '';
+    const s = String(str);
+    let count = 0;
+    for (let i = 0; i < s.length; i++) {
+      if (s[i] >= '0' && s[i] <= '9') {
+        count++;
+        if (count === 2) return s.slice(0, i + 1);
+      }
+    }
+    return s;
   }
 
   // The facility value used for the virtual filter: column R with the quote
@@ -298,12 +315,19 @@
   function buildInPersonData() {
     if (!rawData || rawData.length <= 1) return null;
     const rPos = KEEP_INPERSON.indexOf(COL_R); // position of column R in the kept set
+    const gPos = KEEP_INPERSON.indexOf(COL_G); // position of column G in the kept set
     const out = [];
     for (let r = 0; r < rawData.length; r++) {
       const picked = pick(rawData[r], KEEP_INPERSON);
-      if (r > 0 && rPos !== -1) {
-        const v = picked[rPos];
-        picked[rPos] = (v !== null && v !== undefined) ? extractBetween3rdAnd4thQuote(String(v)) : v;
+      if (r > 0) {
+        if (rPos !== -1) {
+          const v = picked[rPos];
+          picked[rPos] = (v !== null && v !== undefined) ? extractBetween3rdAnd4thQuote(String(v)) : v;
+        }
+        if (gPos !== -1) {
+          const g = picked[gPos];
+          picked[gPos] = (g !== null && g !== undefined) ? truncateThroughSecondDigit(String(g)) : g;
+        }
       }
       out.push(picked);
     }
