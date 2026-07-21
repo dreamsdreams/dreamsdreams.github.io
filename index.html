@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>FREQUENCIES</title>
+<meta name="description" content="A generative frequency field that drifts and evolves over time. An immersive, self-playing light show." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+<style>
+  :root{ --void:#04050a; --ink:#e9eaf6; --dim:rgba(180,190,230,.42); }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; margin:0; }
+  body{
+    background:var(--void); color:var(--ink);
+    font-family:"Space Mono",monospace; overflow:hidden;
+    -webkit-tap-highlight-color:transparent; touch-action:none;
+  }
+  #field{ position:fixed; inset:0; width:100%; height:100%; display:block; z-index:0; }
+
+  /* whisper of state — auto-hides */
+  .whisper{
+    position:fixed; z-index:3; left:22px; bottom:20px;
+    font-size:.66rem; letter-spacing:.24em; text-transform:uppercase;
+    color:var(--dim); pointer-events:none; user-select:none;
+    transition:opacity .8s ease; line-height:1.9;
+  }
+  .whisper b{ color:var(--ink); font-weight:700; letter-spacing:.14em; }
+  .whisper .sub{ display:block; font-size:.58rem; letter-spacing:.2em; color:rgba(150,160,200,.3); }
+
+  /* the entire GUI: three tiny glyphs, auto-hiding */
+  .dock{
+    position:fixed; z-index:4; right:22px; bottom:18px;
+    display:flex; gap:10px; transition:opacity .7s ease;
+  }
+  .g{
+    width:34px; height:34px; display:grid; place-items:center;
+    background:rgba(255,255,255,.03); border:1px solid rgba(150,160,220,.16);
+    border-radius:50%; color:var(--dim); transition:.25s ease; cursor:pointer;
+  }
+  .g:hover,.g:focus-visible{ color:var(--ink); border-color:rgba(180,190,255,.4); outline:none; }
+  .g.on{ color:var(--ink); }
+  .g svg{ width:15px; height:15px; }
+
+  .idle .dock,.idle .whisper{ opacity:0; }
+  .idle{ cursor:none; }
+
+  /* intro */
+  .intro{
+    position:fixed; inset:0; z-index:20; display:grid; place-items:center; text-align:center;
+    background:radial-gradient(120% 90% at 50% 42%, #0a0c17 0%, #04050a 72%);
+    transition:opacity 1.2s ease, visibility 1.2s;
+  }
+  .intro.gone{ opacity:0; visibility:hidden; }
+  .intro h1{
+    margin:0; font-weight:700; font-size:clamp(1.6rem,7vw,3.2rem);
+    letter-spacing:clamp(.3em,2vw,.7em); padding-left:.5em;
+    background:linear-gradient(100deg,#ff6b6b,#ffd24a,#5dff9b,#4ad9ff,#8a7bff,#e07bff);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    filter:drop-shadow(0 0 30px rgba(138,123,255,.3));
+  }
+  .intro .cue{
+    margin-top:34px; font-size:.68rem; letter-spacing:.42em; text-transform:uppercase;
+    color:var(--dim); animation:breathe 3.4s ease-in-out infinite;
+  }
+  @keyframes breathe{ 0%,100%{opacity:.35} 50%{opacity:.9} }
+  @media (prefers-reduced-motion:reduce){ .intro .cue{ animation:none; } }
+</style>
+</head>
+<body>
+<canvas id="field" aria-hidden="true"></canvas>
+
+<div class="whisper" id="whisper"></div>
+
+<div class="dock" id="dock">
+  <button class="g on" id="sound" title="Sound" aria-label="Toggle sound">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19.5 5a9 9 0 0 1 0 14"/></svg>
+  </button>
+  <button class="g" id="shift" title="Move to a new movement" aria-label="New movement">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3m0 12v3M5.6 5.6l2.1 2.1m8.6 8.6 2.1 2.1M3 12h3m12 0h3M5.6 18.4l2.1-2.1m8.6-8.6 2.1-2.1"/></svg>
+  </button>
+  <button class="g" id="full" title="Fullscreen" aria-label="Fullscreen">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3m8 0h3a2 2 0 0 0 2-2v-3"/></svg>
+  </button>
+</div>
+
+<div class="intro" id="intro">
+  <div>
+    <h1>FREQUENCIES</h1>
+    <div class="cue">touch to begin</div>
+  </div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  // ---------- helpers ----------
+  const F_LO=40, F_HI=880;
+  const LOG_LO=Math.log(20), LOG_HI=Math.log(20000);
+  const NOTES=["C","C♯","D","D♯","E","F","F♯","G","G♯","A","A♯","B"];
+  const RATIOS=[1, 9/8, 6/5, 5/4, 4/3, 3/2, 8/5, 5/3, 15/8, 2];
+  const reduceMotion=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const rand=(a=1,b=0)=>b+Math.random()*(a-b);
+  const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
+  const lerp=(a,b,t)=>a+(b-a)*t;
+  const hue=f=>clamp((Math.log(f)-LOG_LO)/(LOG_HI-LOG_LO),0,1)*280;
+  const fold=f=>{ while(f>F_HI)f/=2; while(f<F_LO)f*=2; return f; };
+  function note(f){ const m=Math.round(69+12*Math.log2(f/440));
+    return NOTES[((m%12)+12)%12]+(Math.floor(m/12)-1); }
+
+  // ---------- audio ----------
+  let ctx=null, master=null, live=false, muted=false;
+  const VOL=0.18, LEVEL=0.13;
+  function initAudio(){
+    if(ctx) return;
+    ctx=new (window.AudioContext||window.webkitAudioContext)();
+    master=ctx.createGain(); master.gain.value=0;
+    const comp=ctx.createDynamicsCompressor();
+    comp.threshold.value=-16; comp.knee.value=26; comp.ratio.value=5;
+    master.connect(comp).connect(ctx.destination);
+    master.gain.setTargetAtTime(muted?0:VOL, ctx.currentTime, 3.0); // slow fade-in
+  }
+
+  // ---------- voices (ambient, self-conducting) ----------
+  const N=5;
+  const voices=Array.from({length:N},()=>({
+    freq:fold(rand(300,80)), tFreq:fold(rand(300,80)),
+    amp:0, tAmp:0, type:"sine",
+    phase:rand(10), pulse:rand(6.28), driftSeed:rand(1000),
+    osc:null, ndet:null, g:null
+  }));
+  let root=fold(rand(160,90)), movement=0, mood=rand(1);
+
+  function wire(v){
+    if(!ctx) return;
+    const g=ctx.createGain(); g.gain.value=0;
+    const o1=ctx.createOscillator(); o1.type=v.type; o1.frequency.value=v.freq;
+    const o2=ctx.createOscillator(); o2.type=v.type; o2.frequency.value=v.freq; o2.detune.value=rand(9,4); // shimmer
+    o1.connect(g); o2.connect(g); g.connect(master); o1.start(); o2.start();
+    v.osc=o1; v.ndet=o2; v.g=g;
+  }
+
+  // conductor: retarget the field. small nudges often, big movements sometimes.
+  function conduct(big, seedFreq){
+    if(big){
+      movement++; mood=rand(1);
+      const band=rand(1);
+      root = seedFreq ? fold(seedFreq)
+           : band<.33 ? fold(rand(120,70))    // low
+           : band<.7  ? fold(rand(240,120))   // mid
+           :            fold(rand(440,240));   // high
+    } else if(seedFreq){
+      root = fold(lerp(root, fold(seedFreq), .5));
+    }
+    const density = 2 + Math.floor(rand(1)* (big?3:2)); // 2..4
+    const pool=[...RATIOS].sort(()=>rand(1)-.5);
+    voices.forEach((v,i)=>{
+      if(i<density){
+        v.tFreq = fold(root * pool[i%pool.length]);
+        v.tAmp  = LEVEL*(0.55+rand(.55));
+        if(rand(1)<.35) v.type = rand(1)<.75 ? "sine" : (rand(1)<.6?"triangle":"sawtooth");
+        if(v.osc){ v.osc.type=v.type; v.ndet.type=v.type; }
+      } else {
+        v.tAmp = 0;
+      }
+    });
+    paintWhisper();
+  }
+
+  // ---------- gentle param easing (slow loop, not every frame) ----------
+  function ease(){
+    if(!ctx) return;
+    const now=ctx.currentTime;
+    voices.forEach(v=>{
+      v.freq = lerp(v.freq, v.tFreq, 0.06);
+      v.amp  = lerp(v.amp, v.tAmp, 0.05);
+      if(v.osc){
+        v.osc.frequency.setTargetAtTime(v.freq, now, 0.25);
+        v.ndet.frequency.setTargetAtTime(v.freq, now, 0.25);
+        v.g.gain.setTargetAtTime(v.amp, now, 0.4);
+      }
+    });
+  }
+
+  // ---------- visuals ----------
+  const canvas=document.getElementById("field"), g=canvas.getContext("2d",{alpha:false});
+  let W,H,dpr,particles=[],ripples=[];
+  function resize(){
+    dpr=Math.min(window.devicePixelRatio||1,2);
+    W=innerWidth; H=innerHeight;
+    canvas.width=W*dpr; canvas.height=H*dpr;
+    canvas.style.width=W+"px"; canvas.style.height=H+"px";
+    g.setTransform(dpr,0,0,dpr,0,0);
+    const n=reduceMotion?50:Math.min(150,Math.round(W*H/12000));
+    particles=Array.from({length:n},()=>({x:rand(W),y:rand(H),vx:rand(.3,-.3),vy:rand(.3,-.3),r:rand(2,.5),vi:Math.floor(rand(N))}));
+  }
+  addEventListener("resize",resize);
+
+  function sample(type,ph){
+    const p=ph-Math.floor(ph);
+    if(type==="square")return p<.5?1:-1;
+    if(type==="triangle")return 1-4*Math.abs(p-.5);
+    if(type==="sawtooth")return 2*p-1;
+    return Math.sin(p*6.28318530718);
+  }
+  // slow smooth drift noise
+  const nz=(s)=>Math.sin(s*1.13)*.5+Math.sin(s*0.37+2)*.3+Math.sin(s*0.07+5)*.2;
+
+  let last=performance.now(), tSec=0;
+  function frame(now){
+    const dt=Math.min(.05,(now-last)/1000); last=now; tSec+=dt;
+    const M=reduceMotion?.4:1;
+
+    g.globalCompositeOperation="source-over";
+    g.fillStyle=`rgba(4,5,10,${reduceMotion?.35:.11})`;
+    g.fillRect(0,0,W,H);
+    g.globalCompositeOperation="lighter";
+
+    const act=voices.filter(v=>v.amp>0.004);
+    const globalHueShift = mood*40 + Math.sin(tSec*0.03)*24;
+
+    // drifting blooms
+    act.forEach((v,i)=>{
+      v.pulse += dt*(0.18+ (v.freq/F_HI)*1.6)*M;
+      const env=0.5+0.5*Math.sin(v.pulse);
+      const drift=nz(tSec*0.05 + v.driftSeed);
+      const h=(hue(v.freq)+globalHueShift+360)%360;
+      const yBias = 1-clamp((Math.log(v.freq)-Math.log(F_LO))/(Math.log(F_HI)-Math.log(F_LO)),0,1);
+      const cx=W*(0.5+0.4*Math.sin(v.pulse*0.4+i*1.7)+0.06*drift);
+      const cy=H*(0.2+0.6*yBias)+H*0.12*Math.cos(v.pulse*0.33+i);
+      const R=Math.min(W,H)*(0.30+0.18*env)*(v.amp/LEVEL);
+      const rg=g.createRadialGradient(cx,cy,0,cx,cy,R);
+      const a=(0.10+0.14*env)*(v.amp/LEVEL);
+      rg.addColorStop(0,`hsla(${h} 92% 62% / ${a})`);
+      rg.addColorStop(1,`hsla(${h} 92% 62% / 0)`);
+      g.fillStyle=rg; g.beginPath(); g.arc(cx,cy,R,0,6.2832); g.fill();
+    });
+
+    // flowing per-voice traces, placed by pitch
+    act.forEach(v=>{
+      v.phase += dt*(0.15+v.freq*0.0014)*M;
+      const t=clamp((Math.log(v.freq)-Math.log(F_LO))/(Math.log(F_HI)-Math.log(F_LO)),0,1);
+      const yMid=H*(0.85-0.7*t);
+      const cyc=2+t*24, amp=H*0.10*(v.amp/LEVEL);
+      const h=(hue(v.freq)+globalHueShift+360)%360;
+      g.beginPath();
+      const step=Math.max(2,Math.floor(W/440));
+      for(let x=0;x<=W;x+=step){
+        const y=yMid+sample(v.type,(x/W)*cyc+v.phase)*amp + Math.sin(x*0.004+tSec)*6;
+        x===0?g.moveTo(x,y):g.lineTo(x,y);
+      }
+      g.strokeStyle=`hsla(${h} 92% 66% / ${0.35*(v.amp/LEVEL)})`;
+      g.lineWidth=1.3; g.shadowBlur=14; g.shadowColor=`hsl(${h} 92% 60%)`;
+      g.stroke(); g.shadowBlur=0;
+    });
+
+    // summed resultant — the bright thread
+    if(act.length){
+      let avg=0; act.forEach(v=>avg+=(hue(v.freq)+globalHueShift)); avg=(avg/act.length+360)%360;
+      const step=Math.max(1,Math.floor(W/720));
+      g.beginPath();
+      for(let x=0;x<=W;x+=step){
+        let s=0,w=0;
+        act.forEach(v=>{ const t=clamp((Math.log(v.freq)-Math.log(F_LO))/(Math.log(F_HI)-Math.log(F_LO)),0,1);
+          s+=sample(v.type,(x/W)*(2+t*24)+v.phase)*(v.amp/LEVEL); w+=v.amp/LEVEL; });
+        const y=H*0.5 + (w?s/w:0)*H*0.13;
+        x===0?g.moveTo(x,y):g.lineTo(x,y);
+      }
+      g.strokeStyle="rgba(255,255,255,.85)";
+      g.lineWidth=1.8; g.shadowBlur=22; g.shadowColor=`hsl(${avg.toFixed(0)} 90% 62%)`;
+      g.stroke(); g.shadowBlur=0;
+    }
+
+    // particles
+    particles.forEach(p=>{
+      p.x+=p.vx*M; p.y+=p.vy*M;
+      if(p.x<0)p.x+=W; if(p.x>W)p.x-=W; if(p.y<0)p.y+=H; if(p.y>H)p.y-=H;
+      const v=act[p.vi%Math.max(1,act.length)]; if(!v)return;
+      const h=(hue(v.freq)+globalHueShift+360)%360;
+      const tw=0.35+0.65*Math.abs(Math.sin(v.pulse+p.x*0.01));
+      g.fillStyle=`hsla(${h} 92% 72% / ${tw*0.4})`;
+      g.beginPath(); g.arc(p.x,p.y,p.r,0,6.2832); g.fill();
+    });
+
+    // ripples from touches
+    for(let i=ripples.length-1;i>=0;i--){
+      const r=ripples[i]; r.age+=dt;
+      const rad=r.age*260, a=clamp(1-r.age/1.6,0,1);
+      if(a<=0){ ripples.splice(i,1); continue; }
+      g.strokeStyle=`hsla(${r.h} 95% 68% / ${a*0.7})`;
+      g.lineWidth=2*a+0.5; g.shadowBlur=20*a; g.shadowColor=`hsl(${r.h} 95% 62%)`;
+      g.beginPath(); g.arc(r.x,r.y,rad,0,6.2832); g.stroke(); g.shadowBlur=0;
+    }
+
+    requestAnimationFrame(frame);
+  }
+
+  // ---------- whisper of state ----------
+  const whisperEl=document.getElementById("whisper");
+  function paintWhisper(){
+    const a=voices.filter(v=>v.tAmp>0).sort((x,y)=>x.freq-y.freq);
+    const chord=a.map(v=>note(v.freq)).join(" · ");
+    whisperEl.innerHTML=`<b>movement ${movement}</b> — ${a.length} voices around ${note(root)}
+      <span class="sub">${chord||"…"}</span>`;
+  }
+
+  // ---------- interaction ----------
+  const dock=document.getElementById("dock");
+  function seed(x,y){
+    const f=fold(Math.exp(lerp(Math.log(F_LO),Math.log(F_HI),clamp(x/W,0,1))));
+    ripples.push({x,y,age:0,h:hue(f)});
+    if(ripples.length>24) ripples.shift();
+    conduct(false, f);
+  }
+  canvas.addEventListener("pointerdown",e=>{
+    if(!live) return;
+    seed(e.clientX, e.clientY);
+  });
+
+  document.getElementById("sound").addEventListener("click",e=>{
+    e.stopPropagation(); muted=!muted;
+    document.getElementById("sound").classList.toggle("on",!muted);
+    if(master) master.gain.setTargetAtTime(muted?0:VOL, ctx.currentTime, 0.6);
+  });
+  document.getElementById("shift").addEventListener("click",e=>{ e.stopPropagation(); conduct(true); });
+  document.getElementById("full").addEventListener("click",e=>{ e.stopPropagation();
+    document.fullscreenElement?document.exitFullscreen?.():document.documentElement.requestFullscreen?.(); });
+
+  // auto-hide GUI + cursor when idle
+  let idleT;
+  function wake(){ document.body.classList.remove("idle"); clearTimeout(idleT);
+    idleT=setTimeout(()=>document.body.classList.add("idle"),2600); }
+  ["pointermove","pointerdown","keydown","touchstart"].forEach(ev=>addEventListener(ev,wake,{passive:true}));
+
+  // ---------- boot ----------
+  function boot(){
+    if(live) return; live=true;
+    initAudio(); if(ctx.state==="suspended") ctx.resume();
+    voices.forEach(wire);
+    conduct(true);
+    document.getElementById("intro").classList.add("gone");
+    wake();
+    clearInterval(preEase);
+    // living clocks: gentle easing, occasional nudges, rarer full movements
+    setInterval(ease, 90);
+    setInterval(()=>conduct(false), reduceMotion?14000:7000 + rand(4000));
+    setInterval(()=>conduct(true), reduceMotion?60000:28000 + rand(16000));
+  }
+  document.getElementById("intro").addEventListener("pointerdown",boot);
+  addEventListener("keydown",e=>{ if(e.key===" "||e.key==="Enter") boot(); });
+
+  // start visuals immediately (silent, evolving) so the field is alive behind the intro
+  resize();
+  conduct(true);            // seed a target chord for the visuals
+  voices.forEach(v=>v.amp=0.0001);
+  // let visual amps rise even before audio, by easing without ctx:
+  let preEase=setInterval(()=>{ voices.forEach(v=>{ v.freq=lerp(v.freq,v.tFreq,.06); v.amp=lerp(v.amp,v.tAmp,.04); }); },90);
+  paintWhisper();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
