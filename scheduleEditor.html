@@ -27,9 +27,9 @@
     --sun-bg: #f0f4ff;
     --sun-border: #d6e0ff;
     --sun-text: #6b8af7;
-    --off-bg: #fff4f0;
-    --off-border: #ffc9b0;
-    --off-color: #e8622a;
+    --off-bg: #52525b;
+    --off-border: #3f3f46;
+    --off-color: #3f3f46;
     --off-work-bg: #e8622a;
     --off-work-border: #c94e1c;
   }
@@ -243,7 +243,7 @@
   .cal-day.sat:not(.work):not(.off) .day-num { color: var(--sat-text); }
   .cal-day.sun:not(.work):not(.off) .day-num { color: var(--sun-text); }
   .cal-day.work .day-num { color: rgba(255,255,255,0.8); font-weight: 500; }
-  .cal-day.off .day-num { color: var(--off-color); }
+  .cal-day.off .day-num { color: rgba(255,255,255,0.85); font-weight: 500; }
 
   .day-val {
     font-size: 0.71rem; font-weight: 700; margin-top: 3px;
@@ -251,7 +251,7 @@
     max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 2px;
   }
   .cal-day.work .day-val { color: #fff; }
-  .cal-day.off .day-val { color: var(--off-color); font-weight: 700; }
+  .cal-day.off .day-val { color: #fff; font-weight: 700; }
 
   #reportTable table { border-collapse: collapse; font-size: 11px; width: 100%; }
   #reportTable th, #reportTable td { padding: 4px 7px; border: 1px solid #e5e7eb; white-space: nowrap; }
@@ -423,7 +423,7 @@
   #calExportTarget .ex-day.sat { background: #f0f4ff; border-color: #d6e0ff; }
   #calExportTarget .ex-day.sun { background: #f0f4ff; border-color: #d6e0ff; }
   #calExportTarget .ex-day.work { background: #4f6ef7; border-color: #3a57e8; }
-  #calExportTarget .ex-day.off  { background: #fff4f0; border-color: #ffc9b0; }
+  #calExportTarget .ex-day.off  { background: #52525b; border-color: #3f3f46; }
 
   #calExportTarget .ex-day-num {
     font-size: 12px; font-weight: 600; color: #8a8f9c; line-height: 1;
@@ -431,7 +431,7 @@
   #calExportTarget .ex-day.sat:not(.work):not(.off) .ex-day-num { color: #6b8af7; }
   #calExportTarget .ex-day.sun:not(.work):not(.off) .ex-day-num { color: #6b8af7; }
   #calExportTarget .ex-day.work .ex-day-num { color: rgba(255,255,255,0.8); font-weight: 500; }
-  #calExportTarget .ex-day.off  .ex-day-num { color: #e8622a; }
+  #calExportTarget .ex-day.off  .ex-day-num { color: rgba(255,255,255,0.85); font-weight: 500; }
 
   #calExportTarget .ex-day-val {
     font-size: 10px; font-weight: 700; margin-top: 3px; color: #1a1d23;
@@ -439,7 +439,7 @@
     text-overflow: ellipsis; max-width: 100%; padding: 0 2px;
   }
   #calExportTarget .ex-day.work .ex-day-val { color: #fff; }
-  #calExportTarget .ex-day.off  .ex-day-val { color: #e8622a; }
+  #calExportTarget .ex-day.off  .ex-day-val { color: #fff; }
 
   #calExportTarget .ex-legend {
     display: flex; gap: 16px; margin-top: 18px; flex-wrap: wrap;
@@ -508,7 +508,7 @@
 
   <div class="legend">
     <span class="legend-item"><span class="legend-dot" style="background:var(--accent);"></span>Working</span>
-    <span class="legend-item"><span class="legend-dot" style="background:var(--off-bg);border:1.5px solid var(--off-border);"></span><span style="color:var(--off-color);font-weight:600;">OFF</span></span>
+    <span class="legend-item"><span class="legend-dot" style="background:var(--off-bg);border:1.5px solid var(--off-border);"></span><span style="color:var(--off-color);font-weight:600;">OFF / OOO</span></span>
     <span class="legend-item"><span class="legend-dot" style="background:var(--sat-bg);border:1.5px solid var(--sat-border);"></span>Weekend off</span>
     <span class="legend-item"><span class="legend-dot" style="background:var(--white);border:1.5px solid var(--border);"></span>Weekday off</span>
   </div>
@@ -519,7 +519,19 @@
   <div class="action-bar">
     <button class="btn btn-green" onclick="openExportModal()">🖼️ Download as Image</button>
     <button class="btn btn-primary" onclick="showReport()">📄 View Schedule Table</button>
+    <button class="btn btn-ghost" onclick="toggleComparePanel()">🆚 Compare with someone</button>
     <button class="btn btn-ghost" onclick="resetAll()">← Load a different file</button>
+  </div>
+
+  <!-- Compare panel -->
+  <div id="comparePanel" style="display:none; margin-top:1.5rem;">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem;">
+      <div style="font-size:0.82rem; font-weight:600; color:var(--text);">Compare Schedules</div>
+      <button class="btn btn-ghost" style="font-size:0.75rem; padding:0.35rem 0.8rem;" onclick="toggleComparePanel()">Close</button>
+    </div>
+    <input class="search-box" type="text" id="compareSearchBox" placeholder="Search by name or ID…" />
+    <div class="row-list" id="compareRowList" style="max-height:200px;"></div>
+    <div id="compareResult" style="margin-top:1rem;"></div>
   </div>
 
   <!-- Inline report table -->
@@ -587,6 +599,7 @@ let allEmployeeRows = [];
 let activeSheetName = '';
 let MONTH_STARTS = [];
 let exportDataUrl = null;
+let compareRowIdx = -1;
 const DATE_ROW_IDX = 7;
 const DATA_START_ROW = 9;
 
@@ -652,18 +665,24 @@ function loadFile(file) {
 function buildColDateMap() {
   colDateMap = [];
   const dateRow = wsData[DATE_ROW_IDX] || [];
-  for (const ms of MONTH_STARTS) {
+  for (let mi = 0; mi < MONTH_STARTS.length; mi++) {
+    const ms = MONTH_STARTS[mi];
+    // Never read past where the next month's block begins — stops a stray
+    // numeric cell (e.g. a month-summary note) from bleeding into this month.
+    const nextColLimit = (mi + 1 < MONTH_STARTS.length) ? MONTH_STARTS[mi + 1].col0 : dateRow.length;
     const daysInMonth = new Date(ms.year, ms.month + 1, 0).getDate();
-    let dayCounter = 1;
-    for (let c = ms.col0; c < dateRow.length && dayCounter <= daysInMonth; c++) {
+    let lastDay = 0;
+    for (let c = ms.col0; c < nextColLimit; c++) {
       const v = dateRow[c];
       if (v === null || v === undefined || v === '') continue;
       const numVal = parseInt(v);
-      if (!isNaN(numVal) && numVal >= 1 && numVal <= 31) {
-        const date = new Date(ms.year, ms.month, numVal);
-        colDateMap.push({ col0: c, month: ms.month, monthName: ms.name, day: numVal, dow: date.getDay(), date });
-        dayCounter = numVal + 1;
-      }
+      if (isNaN(numVal) || numVal < 1 || numVal > daysInMonth) continue;
+      // Day numbers must strictly increase — rejects extraneous numeric text
+      // (headers, notes, etc.) that isn't actually part of the date sequence.
+      if (numVal <= lastDay) continue;
+      const date = new Date(ms.year, ms.month, numVal);
+      colDateMap.push({ col0: c, month: ms.month, monthName: ms.name, day: numVal, dow: date.getDay(), date });
+      lastDay = numVal;
     }
   }
 }
@@ -685,6 +704,7 @@ function buildEmployeeList() {
 }
 
 document.getElementById('searchBox').addEventListener('input', renderRowList);
+document.getElementById('compareSearchBox').addEventListener('input', renderCompareRowList);
 
 function renderRowList() {
   const q = document.getElementById('searchBox').value.trim().toLowerCase();
@@ -714,6 +734,9 @@ function renderRowList() {
 function selectEmployee(emp) {
   selectedRowIdx = emp.rowIdx;
   editedCells = {};
+  compareRowIdx = -1;
+  document.getElementById('comparePanel').style.display = 'none';
+  document.getElementById('compareResult').innerHTML = '';
   renderRowList();
   buildCalendar(emp);
   document.getElementById('reportContainer').style.display = 'none';
@@ -739,18 +762,26 @@ function buildCalendar(emp) {
 }
 
 function renderSummary(row) {
-  let workDays = 0, totalHours = 0;
+  let workDays = 0;
+  const hoursByMonth = {};
+  const monthOrder = [];
   for (const cd of colDateMap) {
     const v = getVal(row, cd.col0);
     if (v !== null && v !== undefined && v !== '' && !String(v).startsWith('=')) {
       workDays++;
       const n = parseFloat(v);
-      if (!isNaN(n)) totalHours += n;
+      if (!isNaN(n)) {
+        if (!(cd.monthName in hoursByMonth)) { hoursByMonth[cd.monthName] = 0; monthOrder.push(cd.monthName); }
+        hoursByMonth[cd.monthName] += n;
+      }
     }
   }
+  const monthPills = monthOrder.map(mn => `
+    <div class="stat-pill"><span class="stat-label">${mn} Hours&nbsp;</span><span class="stat-val">${hoursByMonth[mn]}</span></div>
+  `).join('');
   document.getElementById('summaryBar').innerHTML = `
     <div class="stat-pill"><span class="stat-label">Work Days&nbsp;</span><span class="stat-val">${workDays}</span></div>
-    ${totalHours ? `<div class="stat-pill"><span class="stat-label">Total Hours&nbsp;</span><span class="stat-val">${totalHours}</span></div>` : ''}
+    ${monthPills}
   `;
 }
 
@@ -790,7 +821,8 @@ function renderMonths(row) {
     for (const cd of cols) {
       const v = getVal(row, cd.col0);
       const rawVal = (v !== null && v !== undefined) ? String(v).trim() : '';
-      const isOff = rawVal.toUpperCase() === 'OFF';
+      const upperVal = rawVal.toUpperCase();
+      const isOff = upperVal === 'OFF' || upperVal === 'OOO';
       const isWork = rawVal !== '' && !rawVal.startsWith('=') && !isOff;
       const isSat = cd.dow === 6;
       const isSun = cd.dow === 0;
@@ -839,7 +871,8 @@ function buildExportHTML() {
     for (const cd of cols) {
       const v = getVal(row, cd.col0);
       const rawVal = (v !== null && v !== undefined) ? String(v).trim() : '';
-      const isOff = rawVal.toUpperCase() === 'OFF';
+      const upperVal = rawVal.toUpperCase();
+      const isOff = upperVal === 'OFF' || upperVal === 'OOO';
       const isWork = rawVal !== '' && !rawVal.startsWith('=') && !isOff;
       const isSat = cd.dow === 6;
       const isSun = cd.dow === 0;
@@ -867,7 +900,7 @@ function buildExportHTML() {
     ${monthsHTML}
     <div class="ex-legend">
       <span class="ex-leg"><span class="ex-leg-dot" style="background:#4f6ef7;"></span>Working</span>
-      <span class="ex-leg"><span class="ex-leg-dot" style="background:#fff4f0;border:1px solid #ffc9b0;"></span>OFF</span>
+      <span class="ex-leg"><span class="ex-leg-dot" style="background:#52525b;border:1px solid #3f3f46;"></span>OFF / OOO</span>
       <span class="ex-leg"><span class="ex-leg-dot" style="background:#f0f4ff;border:1px solid #d6e0ff;"></span>Weekend</span>
       <span class="ex-leg"><span class="ex-leg-dot" style="background:#ffffff;border:1px solid #e4e6ea;"></span>Weekday off</span>
     </div>
@@ -993,6 +1026,7 @@ function applyValue(val) {
   const emp = allEmployeeRows.find(e => e.rowIdx === selectedRowIdx);
   if (emp) { renderMonths(wsData[emp.rowIdx] || []); renderSummary(wsData[emp.rowIdx] || []); }
   if (document.getElementById('reportContainer').style.display !== 'none') showReport();
+  if (compareRowIdx >= 0) renderCompareResult();
 }
 
 function applyCustom() {
@@ -1195,9 +1229,132 @@ function showReport() {
   showToast('✓ Table updated');
 }
 
+// ── COMPARE ─────────────────────────────────────────────
+// Shows two flat rows (you vs. someone else) side by side instead of the
+// full month-grid view, for a quick "who's off when" comparison.
+
+function toggleComparePanel() {
+  const panel = document.getElementById('comparePanel');
+  const isOpen = panel.style.display !== 'none';
+  if (isOpen) {
+    panel.style.display = 'none';
+  } else {
+    if (selectedRowIdx < 0) { showToast('Pick your own schedule first (Step 2)'); return; }
+    panel.style.display = 'block';
+    renderCompareRowList();
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+}
+
+function renderCompareRowList() {
+  const q = document.getElementById('compareSearchBox').value.trim().toLowerCase();
+  const list = document.getElementById('compareRowList');
+  list.innerHTML = '';
+  const filtered = allEmployeeRows.filter(e =>
+    e.rowIdx !== selectedRowIdx &&
+    (!q || e.name.toLowerCase().includes(q) || String(e.id || '').toLowerCase().includes(q))
+  );
+  if (!filtered.length) {
+    list.innerHTML = '<div style="color:var(--text-muted);font-size:0.82rem;padding:0.6rem;">No employees found</div>';
+    return;
+  }
+  filtered.forEach(emp => {
+    const div = document.createElement('div');
+    div.className = 'row-item' + (emp.rowIdx === compareRowIdx ? ' selected' : '');
+    div.innerHTML = `
+      <div class="row-item-name">${emp.name}</div>
+      <div class="row-item-meta">${emp.id || ''}</div>
+      ${emp.type ? `<span class="row-item-badge">${emp.type}</span>` : ''}
+    `;
+    div.addEventListener('click', () => selectCompareEmployee(emp));
+    list.appendChild(div);
+  });
+}
+
+function selectCompareEmployee(emp) {
+  compareRowIdx = emp.rowIdx;
+  renderCompareRowList();
+  renderCompareResult();
+}
+
+function compareCellStyle(val) {
+  const u = val.toUpperCase();
+  if (!u) return 'background:#fff;';
+  if (u === 'OFF' || u === 'OOO') return 'background:#52525b;color:#fff;font-weight:700;';
+  if (u === 'PTO') return 'background:#fff8e1;color:#b45309;font-weight:700;';
+  if (u === 'ADM') return 'background:#fdf4ff;color:#7e22ce;font-weight:700;';
+  if (!isNaN(parseFloat(val))) return 'background:#e8f0fe;color:#1d4ed8;font-weight:700;';
+  return 'background:#f9fafb;color:#374151;';
+}
+
+function renderCompareResult() {
+  const result = document.getElementById('compareResult');
+  if (compareRowIdx < 0 || selectedRowIdx < 0) { result.innerHTML = ''; return; }
+
+  const primaryEmp = allEmployeeRows.find(e => e.rowIdx === selectedRowIdx);
+  const compareEmp = allEmployeeRows.find(e => e.rowIdx === compareRowIdx);
+  if (!primaryEmp || !compareEmp) { result.innerHTML = ''; return; }
+
+  const primaryRowLive = (wsData[selectedRowIdx] || []).slice();
+  for (const [col0str, val] of Object.entries(editedCells)) primaryRowLive[parseInt(col0str)] = val;
+  const compareRowData = wsData[compareRowIdx] || [];
+
+  const sortedCols = [...colDateMap].sort((a, b) => a.col0 - b.col0);
+  const months = [...new Set(sortedCols.map(c => c.monthName))];
+  const DOW = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+
+  function rawCell(row, col0) {
+    const v = row[col0];
+    if (v === null || v === undefined) return '';
+    const s = String(v).trim();
+    if (s.startsWith('=')) return '';
+    return s;
+  }
+
+  let monthHeader = '<tr><th style="min-width:130px;background:#374151;color:#fff;padding:5px 8px;font-size:11px;text-align:left;"></th>';
+  for (const mn of months) {
+    const count = sortedCols.filter(c => c.monthName === mn).length;
+    monthHeader += `<th colspan="${count}" style="padding:5px 8px;background:#1e3a5f;color:#fff;font-size:11px;text-align:center;">${mn}</th>`;
+  }
+  monthHeader += '</tr>';
+
+  let dayHeader = '<tr><th style="background:#f1f5f9;padding:4px 8px;font-size:10px;color:#555;text-align:left;">Day</th>';
+  for (const cd of sortedCols) {
+    dayHeader += `<th style="padding:3px 5px;font-size:10px;color:#555;text-align:center;min-width:26px;">${cd.day}<br><span style="opacity:0.6;font-weight:400;">${DOW[cd.dow]}</span></th>`;
+  }
+  dayHeader += '</tr>';
+
+  function dataRowHTML(label, row) {
+    let html = `<tr><td style="padding:4px 8px;font-size:11px;font-weight:700;background:#f8faff;white-space:nowrap;">${label}</td>`;
+    for (const cd of sortedCols) {
+      const val = rawCell(row, cd.col0);
+      html += `<td style="padding:3px 5px;font-size:11px;text-align:center;${compareCellStyle(val)}">${val}</td>`;
+    }
+    html += '</tr>';
+    return html;
+  }
+
+  result.innerHTML = `
+    <div style="font-size:0.82rem;font-weight:600;margin-bottom:0.6rem;">${primaryEmp.name} vs ${compareEmp.name}</div>
+    <div style="overflow-x:auto;border-radius:8px;border:1px solid var(--border);">
+      <table style="border-collapse:collapse;width:max-content;">
+        <thead>${monthHeader}${dayHeader}</thead>
+        <tbody>
+          ${dataRowHTML(primaryEmp.name, primaryRowLive)}
+          ${dataRowHTML(compareEmp.name, compareRowData)}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
 function resetAll() {
   workbook = null; wsData = []; selectedRowIdx = -1;
   colDateMap = []; editedCells = {}; allEmployeeRows = [];
+  compareRowIdx = -1;
+  document.getElementById('comparePanel').style.display = 'none';
+  document.getElementById('compareResult').innerHTML = '';
+  document.getElementById('compareRowList').innerHTML = '';
   ['step1','step2','step3'].forEach(id => setCard(id, ''));
   setCard('step1', 'active');
   ['rowList','calendarContainer','empInfo','summaryBar'].forEach(id => {
