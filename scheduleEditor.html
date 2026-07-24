@@ -508,7 +508,7 @@
 
   <div class="legend">
     <span class="legend-item"><span class="legend-dot" style="background:var(--accent);"></span>Working</span>
-    <span class="legend-item"><span class="legend-dot" style="background:var(--off-bg);border:1.5px solid var(--off-border);"></span><span style="color:var(--off-color);font-weight:600;">OFF / OOO</span></span>
+    <span class="legend-item"><span class="legend-dot" style="background:var(--off-bg);border:1.5px solid var(--off-border);"></span><span style="color:var(--off-color);font-weight:600;">OFF / OOO / PTO</span></span>
     <span class="legend-item"><span class="legend-dot" style="background:var(--sat-bg);border:1.5px solid var(--sat-border);"></span>Weekend off</span>
     <span class="legend-item"><span class="legend-dot" style="background:var(--white);border:1.5px solid var(--border);"></span>Weekday off</span>
   </div>
@@ -822,7 +822,7 @@ function renderMonths(row) {
       const v = getVal(row, cd.col0);
       const rawVal = (v !== null && v !== undefined) ? String(v).trim() : '';
       const upperVal = rawVal.toUpperCase();
-      const isOff = upperVal === 'OFF' || upperVal === 'OOO';
+      const isOff = upperVal === 'OFF' || upperVal === 'OOO' || upperVal === 'PTO';
       const isWork = rawVal !== '' && !rawVal.startsWith('=') && !isOff;
       const isSat = cd.dow === 6;
       const isSun = cd.dow === 0;
@@ -872,7 +872,7 @@ function buildExportHTML() {
       const v = getVal(row, cd.col0);
       const rawVal = (v !== null && v !== undefined) ? String(v).trim() : '';
       const upperVal = rawVal.toUpperCase();
-      const isOff = upperVal === 'OFF' || upperVal === 'OOO';
+      const isOff = upperVal === 'OFF' || upperVal === 'OOO' || upperVal === 'PTO';
       const isWork = rawVal !== '' && !rawVal.startsWith('=') && !isOff;
       const isSat = cd.dow === 6;
       const isSun = cd.dow === 0;
@@ -900,7 +900,7 @@ function buildExportHTML() {
     ${monthsHTML}
     <div class="ex-legend">
       <span class="ex-leg"><span class="ex-leg-dot" style="background:#4f6ef7;"></span>Working</span>
-      <span class="ex-leg"><span class="ex-leg-dot" style="background:#52525b;border:1px solid #3f3f46;"></span>OFF / OOO</span>
+      <span class="ex-leg"><span class="ex-leg-dot" style="background:#52525b;border:1px solid #3f3f46;"></span>OFF / OOO / PTO</span>
       <span class="ex-leg"><span class="ex-leg-dot" style="background:#f0f4ff;border:1px solid #d6e0ff;"></span>Weekend</span>
       <span class="ex-leg"><span class="ex-leg-dot" style="background:#ffffff;border:1px solid #e4e6ea;"></span>Weekday off</span>
     </div>
@@ -1083,7 +1083,7 @@ function showReport() {
     const v = cellVal(rowArr, col).toUpperCase();
     if (!v) return 'background:#fff;';
     if (v === 'OFF')  return 'background:#fff4f0;color:#e8622a;font-weight:700;';
-    if (v === 'PTO')  return 'background:#fff8e1;color:#b45309;font-weight:700;';
+    if (v === 'PTO')  return 'background:#52525b;color:#fff;font-weight:700;';
     if (v === 'OOO' || v === 'ooo') return 'background:#f3f4f6;color:#6b7280;font-weight:600;';
     if (v === 'ADM' || v === 'adm') return 'background:#fdf4ff;color:#7e22ce;font-weight:700;';
     if (!isNaN(parseFloat(v))) return 'background:#e8f0fe;color:#1d4ed8;font-weight:700;';
@@ -1281,7 +1281,7 @@ function compareCellStyle(val) {
   const u = val.toUpperCase();
   if (!u) return 'background:#fff;';
   if (u === 'OFF' || u === 'OOO') return 'background:#52525b;color:#fff;font-weight:700;';
-  if (u === 'PTO') return 'background:#fff8e1;color:#b45309;font-weight:700;';
+  if (u === 'PTO') return 'background:#52525b;color:#fff;font-weight:700;';
   if (u === 'ADM') return 'background:#fdf4ff;color:#7e22ce;font-weight:700;';
   if (!isNaN(parseFloat(val))) return 'background:#e8f0fe;color:#1d4ed8;font-weight:700;';
   return 'background:#f9fafb;color:#374151;';
