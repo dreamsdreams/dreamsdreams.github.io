@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CrossWordle Co-op - Multiplayer Crossword</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- PeerJS for P2P Lobby and Real-time sync -->
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+    <!-- Canvas Confetti for winning celebrations -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .cell-input {
+            caret-color: transparent;
+        }
+    </style>
+</head>
+<body class="h-full bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 flex flex-col transition-colors duration-200">
+
+    <header class="border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-indigo-500/30">
+                    CW
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-tight">WordSync</h1>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Co-op Crossword for Friends</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-3">
+                <div id="connection-status" class="hidden sm:flex items-center space-x-2 text-xs px-3 py-1.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 font-medium">
+                    <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                    <span id="status-text">Disconnected</span>
+                </div>
+                <button onclick="toggleDarkMode()" class="p-2 rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition" title="Toggle Theme">
+                    <svg id="theme-icon-sun" class="w-5 h-5 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                    <svg id="theme-icon-moon" class="w-5 h-5 block dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path></svg>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex flex-col justify-center">
+
+        <!-- VIEW 1: LOBBY / SETUP -->
+        <div id="view-lobby" class="max-w-md mx-auto w-full bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-700 p-6 sm:p-8 space-y-6">
+            <div class="text-center space-y-2">
+                <h2 class="text-2xl font-bold tracking-tight">Play Together</h2>
+                <p class="text-sm text-slate-500 dark:text-slate-400">Create a new lobby or join your friend with a 4-letter code (up to 4 players).</p>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Your Nickname</label>
+                    <input type="text" id="input-username" maxlength="12" class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition font-medium" placeholder="e.g. Alex">
+                </div>
+
+                <div class="pt-2 border-t border-slate-100 dark:border-slate-700 space-y-3">
+                    <button onclick="createRoom()" class="w-full py-3.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl shadow-lg shadow-indigo-600/30 transition flex items-center justify-center space-x-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                        <span>Create New Room</span>
+                    </button>
+
+                    <div class="relative flex py-2 items-center">
+                        <div class="flex-grow border-t border-slate-200 dark:border-slate-700"></div>
+                        <span class="flex-shrink mx-4 text-xs text-slate-400 uppercase tracking-widest">or join</span>
+                        <div class="flex-grow border-t border-slate-200 dark:border-slate-700"></div>
+                    </div>
+
+                    <div class="flex space-x-2">
+                        <input type="text" id="input-room-code" maxlength="4" class="w-32 uppercase text-center font-mono text-lg tracking-widest px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none" placeholder="ABCD">
+                        <button onclick="joinRoom()" class="flex-1 py-3 px-4 bg-slate-800 dark:bg-slate-700 hover:bg-slate-700 dark:hover:bg-slate-600 text-white font-semibold rounded-xl transition shadow">
+                            Join Room
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW 2: ROOM WAITING LOBBY -->
+        <div id="view-room" class="hidden max-w-2xl mx-auto w-full bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-700 p-6 sm:p-8 space-y-6">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-6 border-b border-slate-100 dark:border-slate-700 gap-4">
+                <div>
+                    <span class="text-xs uppercase font-bold tracking-wider text-indigo-600 dark:text-indigo-400">Room Code</span>
+                    <h2 id="display-room-code" class="text-3xl font-mono font-bold tracking-widest">----</h2>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <button onclick="copyInviteLink()" class="px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-sm font-semibold rounded-xl transition flex items-center space-x-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
+                        <span>Copy Code</span>
+                    </button>
+                    <button onclick="leaveRoom()" class="px-4 py-2 bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-sm font-semibold rounded-xl transition">
+                        Leave
+                    </button>
+                </div>
+            </div>
+
+            <!-- Puzzle Selection (Host Only) -->
+            <div id="host-puzzle-selection" class="space-y-3">
+                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Select Crossword Puzzle</label>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" id="puzzle-options-list">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+
+            <!-- Players List -->
+            <div class="space-y-3">
+                <div class="flex items-center justify-between">
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Players in Room (<span id="player-count">1</span>/4)</label>
+                </div>
+                <div id="players-list" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <!-- Player cards inserted here -->
+                </div>
+            </div>
+
+            <!-- Start Game Button (Host Only) -->
+            <div id="host-start-container" class="pt-4 border-t border-slate-100 dark:border-slate-700 hidden">
+                <button onclick="startSharedGame()" class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl shadow-lg shadow-indigo-600/30 transition">
+                    Start Co-op Game
+                </button>
+            </div>
+            <div id="guest-waiting-notice" class="pt-4 border-t border-slate-100 dark:border-slate-700 text-center text-sm text-slate-500 italic">
+                Waiting for host to select a puzzle and start the game...
+            </div>
+        </div>
+
+        <!-- VIEW 3: ACTIVE GAME -->
+        <div id="view-game" class="hidden flex-col xl:flex-row gap-6 w-full items-start">
+            <!-- Left Panel: Grid & Game HUD -->
+            <div class="flex-1 w-full space-y-4">
+                <!-- HUD Top Bar -->
+                <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 flex flex-wrap items-center justify-between gap-4">
+                    <div class="flex items-center space-x-4">
+                        <div>
+                            <span class="text-xs text-slate-400 uppercase font-semibold">Puzzle</span>
+                            <h3 id="game-puzzle-title" class="font-bold text-sm sm:text-base">Loading...</h3>
+                        </div>
+                        <div class="h-8 w-px bg-slate-200 dark:bg-slate-700"></div>
+                        <div>
+                            <span class="text-xs text-slate-400 uppercase font-semibold">Timer</span>
+                            <div id="game-timer" class="font-mono font-bold text-indigo-600 dark:text-indigo-400 text-base">00:00</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <button onclick="checkPuzzle()" class="px-3 py-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-xs font-semibold rounded-lg transition">Check</button>
+                        <button onclick="revealLetter()" class="px-3 py-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-xs font-semibold rounded-lg transition">Reveal Letter</button>
+                        <button onclick="revealWord()" class="px-3 py-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-xs font-semibold rounded-lg transition">Reveal Word</button>
+                        <button onclick="backToRoomLobby()" class="px-3 py-1.5 bg-rose-50 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400 text-xs font-semibold rounded-lg transition">Exit</button>
+                    </div>
+                </div>
+
+                <!-- Active Players Bar -->
+                <div id="active-players-bar" class="flex items-center space-x-2 overflow-x-auto py-1">
+                    <!-- Active cursors legend -->
+                </div>
+
+                <!-- Crossword Grid Board Container -->
+                <div class="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-2xl shadow-lg border border-slate-100 dark:border-slate-700 flex justify-center overflow-auto">
+                    <div id="crossword-grid" class="grid gap-0 bg-slate-300 dark:bg-slate-700 border-2 border-slate-300 dark:border-slate-700 rounded-lg shadow-inner select-none">
+                        <!-- Generated cells -->
+                    </div>
+                </div>
+
+                <!-- Current Clue Banner -->
+                <div class="bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/50 p-4 rounded-xl flex items-center justify-between">
+                    <div>
+                        <span id="current-clue-number" class="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">Across 1</span>
+                        <p id="current-clue-text" class="font-medium text-sm sm:text-base text-slate-800 dark:text-slate-200">Select a cell to view clue</p>
+                    </div>
+                    <button onclick="toggleDirection()" class="px-3 py-1.5 bg-indigo-600 text-white text-xs font-semibold rounded-lg shadow hover:bg-indigo-700 transition">
+                        Switch Dir (<span id="direction-label">ACROSS</span>)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Right Panel: Clues & Chat -->
+            <div class="w-full xl:w-96 space-y-4">
+                <!-- Clues Box -->
+                <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden flex flex-col h-[400px]">
+                    <div class="flex border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+                        <button onclick="switchClueTab('across')" id="tab-across" class="flex-1 py-3 text-xs font-bold uppercase tracking-wider text-indigo-600 border-b-2 border-indigo-600 bg-white dark:bg-slate-800 transition">Across</button>
+                        <button onclick="switchClueTab('down')" id="tab-down" class="flex-1 py-3 text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition">Down</button>
+                    </div>
+                    <div id="clues-container" class="flex-1 overflow-y-auto p-4 space-y-2">
+                        <!-- Populated clues -->
+                    </div>
+                </div>
+
+                <!-- Chat Box -->
+                <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col h-[260px]">
+                    <div class="p-3 border-b border-slate-100 dark:border-slate-700 text-xs font-bold uppercase tracking-wider text-slate-500">
+                        Room Chat
+                    </div>
+                    <div id="chat-messages" class="flex-1 p-3 overflow-y-auto space-y-2 text-sm">
+                        <!-- Chat messages -->
+                    </div>
+                    <div class="p-3 border-t border-slate-100 dark:border-slate-700 flex space-x-2">
+                        <input type="text" id="chat-input" onkeydown="handleChatKey(event)" placeholder="Type message..." class="flex-1 px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <button onclick="sendChatMessage()" class="px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700 transition">Send</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Custom Modal / Alert Box -->
+    <div id="custom-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-800 max-w-sm w-full rounded-2xl shadow-2xl p-6 space-y-4 border border-slate-100 dark:border-slate-700 text-center">
+            <h3 id="modal-title" class="text-lg font-bold">Notice</h3>
+            <p id="modal-message" class="text-sm text-slate-500 dark:text-slate-400">Message goes here.</p>
+            <button onclick="closeModal()" class="w-full py-2.5 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition">OK</button>
+        </div>
+    </div>
+
+    <script>
+        const PUZZLES = [
+            {
+                id: 'tech',
+                title: 'Tech & Coding',
+                category: 'Easy Start',
+                size: 7,
+                grid: [
+                    ['A','P','I','.','J','S','.'],
+                    ['.','.','.','.','A','V','A'],
+                    ['W','E','B','.','V','A','R'],
+                    ['.','.','.','.','A','.','S'],
+                    ['C','L','O','U','D','S','.'],
+                    ['.','.','.','.','.','.','.'],
+                    ['.','.','.','.','.','.','.']
+                ],
+                // Simplified miniature 7x7 crossword for fast co-op fun
+                solution: [
+                    ['A','P','I','#','J','S','#'],
+                    ['#','#','#','#','A','V','A'],
+                    ['W','E','B','#','V','A','R'],
+                    ['#','#','#','#','A','#','S'],
+                    ['C','L','O','U','D','S','#'],
+                    ['#','#','#','#','#','#','#'],
+                    ['#','#','#','#','#','#','#']
+                ],
+                // A simplified representation where cells are active letters or '#' for black cells
+                cellsData: [
+                    {r:0, c:0, ans:'A', num:1}, {r:0, c:1, ans:'P', num:2}, {r:0, c:2, ans:'I', num:3}, {r:0, c:4, ans:'J', num:4}, {r:0, c:5, ans:'S', num:5},
+                    {r:1, c:4, ans:'A', num:4}, {r:1, c:5, ans:'V', num:6}, {r:1, c:6, ans:'A', num:7},
+                    {r:2, c:0, ans:'W', num:8}, {r:2, c:1, ans:'E', num:9}, {r:2, c:2, ans:'B', num:10}, {r:2, c:4, ans:'V'}, {r:2, c:5, ans:'A'}, {r:2, c:6, ans:'R'},
+                    {r:3, c:4, ans:'A'}, {r:3, c:6, ans:'S'},
+                    {r:4, c:0, ans:'C', num:11}, {r:4, c:1, ans:'L', num:12}, {r:4, c:2, ans:'O', num:13}, {r:4, c:3, ans:'U', num:14}, {r:4, c:4, ans:'D'}, {r:4, c:5, ans:'S'}
+                ],
+                clues: {
+                    across: [
+                        {num: 1, text: "Software interface acronym", answer: "API", row: 0, col: 0, len: 3},
+                        {num: 8, text: "World Wide ___", answer: "WEB", row: 2, col: 0, len: 3},
+                        {num: 11, text: "Hosted servers in the sky", answer: "CLOUDS", row: 4, col: 0, len: 6}
+                    ],
+                    down: [
+                        {num: 1, text: "Awake (slang)", answer: "WAKE", row: 0, col: 0, len: 1}, // simplified for demo
+                        {num: 4, text: "Language of the web browser", answer: "JAVA", row: 0, col: 4, len: 5},
+                        {num: 5, text: "Common file format (.js)", answer: "JS", row: 0, col: 5, len: 1},
+                        {num: 7, text: "Pirate's affirmative", answer: "AVAR", row: 1, col: 6, len: 3}
+                    ]
+                }
+            },
+            {
+                id: 'classic',
+                title: 'Classic Daily Mini',
+                category: 'Popular',
+                size: 5,
+                solution: [
+                    ['C','A','T','#','#'],
+                    ['A','R','O','U','S'],
+                    ['T','E','N','T','S'],
+                    ['#','S','T','A','R'],
+                    ['#','#','S','P','Y']
+                ],
+                // We'll generate robust grid metadata programmatically or use template
+                size: 5
+            }
+        ];
+
+        // Fallback generator for robust mini 5x5 if custom
+        function getPuzzleTemplate(id) {
+            if (id === 'tech') return PUZZLES[0];
+            return {
+                id: 'classic',
+                title: 'Classic Mini',
+                size: 5,
+                solution: [
+                    ['C','A','T','S','!'],
+                    ['L','I','O','N','S'],
+                    ['E','A','G','L','E'],
+                    ['A','P','P','L','E'],
+                    ['TIGER'.split('')]
+                ],
+                clues: {
+                    across: [
+                        {num: 1, text: "Feline pets", answer: "CATS", row: 0, col: 0, len: 4},
+                        {num: 5, text: "King of the jungle", answer: "LIONS", row: 1, col: 0, len: 5},
+                        {num: 6, text: "Majestic bird of prey", answer: "EAGLE", row: 2, col: 0, len: 5},
+                        {num: 7, text: "Fruit a day keeps doctor away", answer: "APPLE", row: 3, col: 0, len: 5}
+                    ],
+                    down: [
+                        {num: 1, text: "Cleans fur with tongue", answer: "CLEAN", row: 0, col: 0, len: 5},
+                        {num: 2, text: "Barks or meows sound", answer: "AUDIO", row: 0, col: 1, len: 5},
+                        {num: 3, text: "Not out", answer: "SAFE", row: 0, col: 2, len: 4},
+                        {num: 4, text: "Plural of leaf", answer: "LEAVES", row: 0, col: 3, len: 5}
+                    ]
+                }
+            };
+        }
+
+        // State Variables
+        let state = {
+            username: '',
+            roomCode: '',
+            isHost: false,
+            peers: {}, // peerId -> { username, color, cursor: {r, c} }
+            myId: '',
+            peer: null,
+            connections: [],
+            players: [],
+            selectedPuzzleId: 'tech',
+            gameActive: false,
+            gridSize: 5,
+            puzzle: null,
+            userGrid: {}, // "r-c" -> letter
+            cursor: { r: 0, c: 0 },
+            direction: 'across', // 'across' or 'down'
+            startTime: null,
+            timerInterval: null,
+            elapsedSeconds: 0,
+            color: getRandomColor()
+        };
+
+        const PLAYER_COLORS = ['#6366f1', '#ec4899', '#10b981', '#f59e0b', '#8b5cf6'];
+        function getRandomColor() {
+            return PLAYER_COLORS[Math.floor(Math.random() * PLAYER_COLORS.length)];
+        }
+
+        // Initialize App on load
+        window.onload = function() {
+            const savedName = localStorage.getItem('cw_username');
+            if (savedName) {
+                document.getElementById('input-username').value = savedName;
+            }
+            renderPuzzleOptions();
+        };
+
+        function toggleDarkMode() {
+            document.documentElement.classList.toggle('dark');
+        }
+
+        function showModal(title, message) {
+            document.getElementById('modal-title').innerText = title;
+            document.getElementById('modal-message').innerText = message;
+            document.getElementById('custom-modal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('custom-modal').classList.add('hidden');
+        }
+
+        function generateRoomCode() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            let code = '';
+            for (let i = 0; i < 4; i++) {
+                code += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return code;
+        }
+
+        function createRoom() {
+            const username = document.getElementById('input-username').value.trim();
+            if (!username) {
+                showModal('Nickname Required', 'Please enter your nickname before creating a room.');
+                return;
+            }
+            state.username = username;
+            localStorage.setItem('cw_username', username);
+            state.isHost = true;
+            state.roomCode = generateRoomCode();
+
+            initPeerConnection(true);
+        }
+
+        function joinRoom() {
+            const username = document.getElementById('input-username').value.trim();
+            const code = document.getElementById('input-room-code').value.trim().toUpperCase();
+            if (!username) {
+                showModal('Nickname Required', 'Please enter your nickname.');
+                return;
+            }
+            if (code.length !== 4) {
+                showModal('Invalid Code', 'Please enter a valid 4-letter room code.');
+                return;
+            }
+            state.username = username;
+            localStorage.setItem('cw_username', username);
+            state.isHost = false;
+            state.roomCode = code;
+
+            initPeerConnection(false);
+        }
+
+        function initPeerConnection(isHost) {
+            updateConnectionStatus('connecting', 'Connecting to network...');
+            
+            // Using PeerJS public cloud server with room prefix
+            const peerId = isHost ? `cw-${state.roomCode}` : `cw-${state.roomCode}-${Math.random().toString(36.substring(2, 6))}`;
+            
+            // Clean up existing peer if any
+            if (state.peer) {
+                state.peer.destroy();
+            }
+
+            state.peer = new Peer(isHost ? `cw-${state.roomCode}` : undefined, {
+                debug: 1
+            });
+
+            state.peer.on('open', (id) => {
+                state.myId = id;
+                updateConnectionStatus('connected', 'Connected');
+                
+                if (isHost) {
+                    state.players = [{ id: state.myId, username: state.username, color: state.color, isHost: true }];
+                    enterRoomView();
+                } else {
+                    // Connect to host
+                    const hostPeerId = `cw-${state.roomCode}`;
+                    const conn = state.peer.connect(hostPeerId, { reliable: true });
+                    setupConnection(conn, true);
+                }
+            });
+
+            state.peer.on('connection', (conn) => {
+                setupConnection(conn, false);
+            });
+
+            state.peer.on('error', (err) => {
+                console.error(err);
+                updateConnectionStatus('error', 'Connection Error');
+                if (err.type === 'unavailable-id') {
+                    showModal('Room Taken', 'This room code is already active. Try another or join it.');
+                } else if (err.type === 'peer-unavailable') {
+                    showModal('Room Not Found', 'Could not find a room with code ' + state.roomCode + '. Check the code and try again.');
+                } else {
+                    showModal('Connection Error', err.message);
+                }
+            });
+        }
+
+        function setupConnection(conn, isClient) {
+            conn.on('open', () => {
+                if (isClient) {
+                    state.connections.push(conn);
+                    // Send join request
+                    conn.send({ type: 'JOIN', username: state.username, color: state.color, id: state.myId });
+                } else {
+                    state.connections.push(conn);
+                }
+            });
+
+            conn.on('data', (data) => {
+                handlePeerData(data, conn);
+            });
+
+            conn.on('close', () => {
+                state.connections = state.connections.filter(c => c !== conn);
+                if (state.isHost) {
+                    // Remove player and broadcast update
+                    state.players = state.players.filter(p => p.id !== conn.peer);
+                    broadcastState();
+                    updatePlayersList();
+                }
+            });
+        }
+
+        function handlePeerData(data, conn) {
+            if (data.type === 'JOIN') {
+                if (state.isHost) {
+                    if (state.players.length >= 4) {
+                        conn.send({ type: 'ERROR', message: 'Room is full (max 4 players).' });
+                        return;
+                    }
+                    state.players.push({ id: data.id, username: data.username, color: data.color || getRandomColor(), isHost: false });
+                    broadcastState();
+                    updatePlayersList();
+                }
+            } else if (data.type === 'STATE_SYNC') {
+                state.players = data.players;
+                state.selectedPuzzleId = data.selectedPuzzleId;
+                updatePlayersList();
+                if (data.gameActive && !state.gameActive) {
+                    startPuzzleGame(data.selectedPuzzleId, false);
+                }
+            } else if (data.type === 'START_GAME') {
+                startPuzzleGame(data.puzzleId, false);
+            } else if (data.type === 'CELL_UPDATE') {
+                state.userGrid[data.key] = data.letter;
+                const cellInput = document.getElementById(`cell-${data.key}`);
+                if (cellInput) {
+                    cellInput.value = data.letter;
+                    cellInput.classList.add('bg-indigo-50', 'dark:bg-indigo-950/30');
+                    setTimeout(() => cellInput.classList.remove('bg-indigo-50', 'dark:bg-indigo-950/30'), 300);
+                }
+                checkWinCondition();
+            } else if (data.type === 'CURSOR_UPDATE') {
+                state.peers[data.id] = { username: data.username, color: data.color, cursor: data.cursor };
+                renderCursors();
+            } else if (data.type === 'CHAT') {
+                appendChatMessage(data.username, data.message, data.color);
+            } else if (data.type === 'ERROR') {
+                showModal('Error', data.message);
+            }
+        }
+
+        function broadcastData(data) {
+            state.connections.forEach(conn => {
+                if (conn.open) conn.send(data);
+            });
+        }
+
+        function broadcastState() {
+            if (!state.isHost) return;
+            const payload = {
+                type: 'STATE_SYNC',
+                players: state.players,
+                selectedPuzzleId: state.selectedPuzzleId,
+                gameActive: state.gameActive
+            };
+            broadcastData(payload);
+        }
+
+        function updateConnectionStatus(status, text) {
+            const badge = document.getElementById('connection-status');
+            const txt = document.getElementById('status-text');
+            badge.className = `hidden sm:flex items-center space-x-2 text-xs px-3 py-1.5 rounded-full font-medium ${
+                status === 'connected' ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300' :
+                status === 'connecting' ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300' :
+                'bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300'
+            }`;
+            txt.innerText = text;
+        }
+
+        function enterRoomView() {
+            document.getElementById('view-lobby').classList.add('hidden');
+            document.getElementById('view-room').classList.remove('hidden');
+            document.getElementById('display-room-code').innerText = state.roomCode;
+
+            if (state.isHost) {
+                document.getElementById('host-puzzle-selection').classList.remove('hidden');
+                document.getElementById('host-start-container').classList.remove('hidden');
+                document.getElementById('guest-waiting-notice').classList.add('hidden');
+            } else {
+                document.getElementById('host-puzzle-selection').classList.add('hidden');
+                document.getElementById('host-start-container').classList.add('hidden');
+                document.getElementById('guest-waiting-notice').classList.remove('hidden');
+            }
+            updatePlayersList();
+        }
+
+        function leaveRoom() {
+            if (state.peer) state.peer.destroy();
+            state.connections = [];
+            state.players = [];
+            document.getElementById('view-room').classList.add('hidden');
+            document.getElementById('view-game').classList.add('hidden');
+            document.getElementById('view-lobby').classList.remove('hidden');
+            updateConnectionStatus('disconnected', 'Disconnected');
+        }
+
+        function copyInviteLink() {
+            navigator.clipboard.writeText(state.roomCode);
+            showModal('Copied!', 'Room code ' + state.roomCode + ' copied to clipboard.');
+        }
+
+        function updatePlayersList() {
+            const container = document.getElementById('players-list');
+            document.getElementById('player-count').innerText = state.players.length;
+            container.innerHTML = state.players.map(p => `
+                <div class="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-700">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm shadow" style="background-color: ${p.color || '#6366f1'}">
+                            ${p.username.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                            <p class="font-semibold text-sm">${p.username} ${p.id === state.myId ? '(You)' : ''}</p>
+                            <p class="text-xs text-slate-400">${p.isHost ? 'Host' : 'Player'}</p>
+                        </div>
+                    </div>
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                </div>
+            `).join('');
+        }
+
+        function renderPuzzleOptions() {
+            const list = document.getElementById('puzzle-options-list');
+            list.innerHTML = PUZZLES.map(p => `
+                <div onclick="selectPuzzle('${p.id}')" id="puzzle-card-${p.id}" class="cursor-pointer p-4 rounded-xl border transition ${p.id === state.selectedPuzzleId ? 'border-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/20' : 'border-slate-200 dark:border-slate-700 hover:border-slate-300'}">
+                    <span class="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">${p.category}</span>
+                    <h4 class="font-bold text-base mt-1">${p.title}</h4>
+                </div>
+            `).join('');
+        }
+
+        function selectPuzzle(id) {
+            if (!state.isHost) return;
+            state.selectedPuzzleId = id;
+            renderPuzzleOptions();
+            broadcastState();
+        }
+
+        function startSharedGame() {
+            if (!state.isHost) return;
+            broadcastData({ type: 'START_GAME', puzzleId: state.selectedPuzzleId });
+            startPuzzleGame(state.selectedPuzzleId, true);
+        }
+
+        function startPuzzleGame(puzzleId, isHostTrigger) {
+            state.gameActive = true;
+            state.puzzle = getPuzzleTemplate(puzzleId);
+            state.gridSize = state.puzzle.size || 5;
+            state.userGrid = {};
+
+            document.getElementById('view-room').classList.add('hidden');
+            document.getElementById('view-game').classList.remove('hidden');
+            document.getElementById('game-puzzle-title').innerText = state.puzzle.title;
+
+            buildGridDOM();
+            renderClues();
+            startTimer();
+
+            // Set initial cursor
+            setCursor(0, 0);
+        }
+
+        function buildGridDOM() {
+            const gridEl = document.getElementById('crossword-grid');
+            gridEl.style.gridTemplateColumns = `repeat(${state.gridSize}, minmax(0, 1fr))`;
+            gridEl.innerHTML = '';
+
+            for (let r = 0; r < state.gridSize; r++) {
+                for (let c = 0; c < state.gridSize; c++) {
+                    const ans = state.puzzle.solution[r][c];
+                    const isBlack = ans === '#';
+
+                    const cellDiv = document.createElement('div');
+                    cellDiv.className = `relative w-10 h-10 sm:w-12 sm:h-12 border border-slate-300 dark:border-slate-600 flex items-center justify-center ${
+                        isBlack ? 'bg-slate-900 dark:bg-slate-950 cursor-not-allowed' : 'bg-white dark:bg-slate-800 cursor-pointer focus-within:ring-2 focus-within:ring-indigo-500'
+                    }`;
+                    cellDiv.id = `cell-wrapper-${r}-${c}`;
+
+                    if (!isBlack) {
+                        // Find clue number if applicable
+                        let clueNum = '';
+                        if (state.puzzle.clues) {
+                            for (let dir in state.puzzle.clues) {
+                                const found = state.puzzle.clues[dir].find(cl => cl.row === r && cl.col === c);
+                                if (found) clueNum = found.num;
+                            }
+                        }
+
+                        cellDiv.innerHTML = `
+                            ${clueNum ? `<span class="absolute top-0.5 left-1 text-[10px] font-bold text-slate-400 pointer-events-none">${clueNum}</span>` : ''}
+                            <input type="text" maxlength="1" id="cell-${r}-${c}" 
+                                class="cell-input w-full h-full text-center uppercase font-bold text-lg bg-transparent focus:outline-none text-slate-800 dark:text-slate-100"
+                                onfocus="onCellFocus(${r}, ${c})"
+                                onkeydown="handleCellKeyDown(event, ${r}, ${c})"
+                                oninput="handleCellInput(event, ${r}, ${c})">
+                            <div id="cursor-${r}-${c}" class="absolute inset-0 pointer-events-none border-2 border-transparent transition-all"></div>
+                        `;
+                    }
+                    gridEl.appendChild(cellDiv);
+                }
+            }
+        }
+
+        function onCellFocus(r, c) {
+            state.cursor = { r, c };
+            updateCellHighlights();
+            updateActiveClueDisplay();
+            broadcastCursor();
+        }
+
+        function setCursor(r, c) {
+            if (r < 0 || r >= state.gridSize || c < 0 || c >= state.gridSize) return;
+            if (state.puzzle.solution[r][c] === '#') return;
+            const input = document.getElementById(`cell-${r}-${c}`);
+            if (input) {
+                input.focus();
+                input.select();
+            }
+        }
+
+        function updateCellHighlights() {
+            // Clear all highlights
+            for (let r = 0; r < state.gridSize; r++) {
+                for (let c = 0; c < state.gridSize; c++) {
+                    const wrap = document.getElementById(`cell-wrapper-${r}-${c}`);
+                    if (wrap && !wrap.classList.contains('bg-slate-900')) {
+                        wrap.classList.remove('bg-indigo-50', 'dark:bg-indigo-950/40', 'bg-indigo-100', 'dark:bg-indigo-900/40');
+                    }
+                }
+            }
+
+            // Highlight word in current direction
+            const { r, c } = state.cursor;
+            let cr = r, cc = c;
+            if (state.direction === 'across') {
+                while (cc > 0 && state.puzzle.solution[cr][cc - 1] !== '#') cc--;
+                while (cc < state.gridSize && state.puzzle.solution[cr][cc] !== '#') {
+                    const w = document.getElementById(`cell-wrapper-${cr}-${cc}`);
+                    if (w) w.classList.add('bg-indigo-50', 'dark:bg-indigo-950/40');
+                    cc++;
+                }
+            } else {
+                while (cr > 0 && state.puzzle.solution[cr - 1][cc] !== '#') cr--;
+                while (cr < state.gridSize && state.puzzle.solution[cr][cc] !== '#') {
+                    const w = document.getElementById(`cell-wrapper-${cr}-${cc}`);
+                    if (w) w.classList.add('bg-indigo-50', 'dark:bg-indigo-950/40');
+                    cr++;
+                }
+            }
+
+            // Highlight exact active cell
+            const activeWrap = document.getElementById(`cell-wrapper-${r}-${c}`);
+            if (activeWrap) {
+                activeWrap.classList.remove('bg-indigo-50', 'dark:bg-indigo-950/40');
+                activeWrap.classList.add('bg-indigo-100', 'dark:bg-indigo-900/40');
+            }
+        }
+
+        function toggleDirection() {
+            state.direction = state.direction === 'across' ? 'down' : 'across';
+            document.getElementById('direction-label').innerText = state.direction.toUpperCase();
+            updateCellHighlights();
+            updateActiveClueDisplay();
+        }
+
+        function handleCellKeyDown(e, r, c) {
+            if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                setCursor(r, c + 1);
+            } else if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                setCursor(r, c - 1);
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                setCursor(r + 1, c);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                setCursor(r - 1, c);
+            } else if (e.key === 'Tab') {
+                e.preventDefault();
+                toggleDirection();
+            } else if (e.key === 'Backspace') {
+                e.preventDefault();
+                const key = `${r}-${c}`;
+                state.userGrid[key] = '';
+                const input = document.getElementById(`cell-${r}-${c}`);
+                if (input) input.value = '';
+                broadcastCellUpdate(r, c, '');
+
+                // Move backward
+                if (state.direction === 'across') {
+                    setCursor(r, c - 1);
+                } else {
+                    setCursor(r - 1, c);
+                }
+            }
+        }
+
+        function handleCellInput(e, r, c) {
+            const val = e.target.value.toUpperCase().slice(-1);
+            e.target.value = val;
+            const key = `${r}-${c}`;
+            state.userGrid[key] = val;
+
+            broadcastCellUpdate(r, c, val);
+
+            if (val) {
+                // Advance forward
+                if (state.direction === 'across') {
+                    setCursor(r, c + 1);
+                } else {
+                    setCursor(r + 1, c);
+                }
+            }
+
+            checkWinCondition();
+        }
+
+        function broadcastCellUpdate(r, c, letter) {
+            const key = `${r}-${c}`;
+            broadcastData({ type: 'CELL_UPDATE', key, letter });
+        }
+
+        function broadcastCursor() {
+            broadcastData({
+                type: 'CURSOR_UPDATE',
+                id: state.myId,
+                username: state.username,
+                color: state.color,
+                cursor: state.cursor
+            });
+        }
+
+        function renderCursors() {
+            // Remove old remote cursor borders
+            for (let r = 0; r < state.gridSize; r++) {
+                for (let c = 0; c < state.gridSize; c++) {
+                    const cur = document.getElementById(`cursor-${r}-${c}`);
+                    if (cur) cur.style.borderColor = 'transparent';
+                }
+            }
+
+            // Apply remote cursors
+            for (let id in state.peers) {
+                const p = state.peers[id];
+                if (p && p.cursor) {
+                    const cur = document.getElementById(`cursor-${p.cursor.r}-${p.cursor.c}`);
+                    if (cur) {
+                        cur.style.borderColor = p.color;
+                    }
+                }
+            }
+        }
+
+        function renderClues() {
+            const container = document.getElementById('clues-container');
+            if (!state.puzzle.clues) return;
+
+            let html = '<div class="space-y-4">';
+            ['across', 'down'].forEach(dir => {
+                html += `<div id="clue-section-${dir}" class="space-y-2"><h5 class="text-xs font-bold uppercase tracking-wider text-slate-400">${dir}</h5><div class="space-y-1">`;
+                state.puzzle.clues[dir].forEach(cl => {
+                    html += `<div onclick="jumpToClue(${cl.row}, ${cl.col}, '${dir}')" class="p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer transition text-xs flex space-x-2">
+                        <span class="font-bold text-indigo-600 dark:text-indigo-400 w-5">${cl.num}.</span>
+                        <span class="flex-1">${cl.text}</span>
+                    </div>`;
+                });
+                html += '</div></div>';
+            });
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        function jumpToClue(r, c, dir) {
+            state.direction = dir;
+            document.getElementById('direction-label').innerText = dir.toUpperCase();
+            setCursor(r, c);
+        }
+
+        function updateActiveClueDisplay() {
+            if (!state.puzzle.clues) return;
+            const { r, c } = state.cursor;
+            // Find active clue for current cell and direction
+            const cluesList = state.puzzle.clues[state.direction] || [];
+            let matched = cluesList.find(cl => {
+                if (state.direction === 'across') {
+                    return cl.row === r && c >= cl.col && c < cl.col + cl.len;
+                } else {
+                    return cl.col === c && r >= cl.row && r < cl.row + cl.len;
+                }
+            });
+
+            if (matched) {
+                document.getElementById('current-clue-number').innerText = `${state.direction.toUpperCase()} ${matched.num}`;
+                document.getElementById('current-clue-text').innerText = matched.text;
+            }
+        }
+
+        function switchClueTab(dir) {
+            state.direction = dir;
+            document.getElementById('direction-label').innerText = dir.toUpperCase();
+            const acrossBtn = document.getElementById('tab-across');
+            const downBtn = document.getElementById('tab-down');
+            if (dir === 'across') {
+                acrossBtn.className = "flex-1 py-3 text-xs font-bold uppercase tracking-wider text-indigo-600 border-b-2 border-indigo-600 bg-white dark:bg-slate-800 transition";
+                downBtn.className = "flex-1 py-3 text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition";
+            } else {
+                downBtn.className = "flex-1 py-3 text-xs font-bold uppercase tracking-wider text-indigo-600 border-b-2 border-indigo-600 bg-white dark:bg-slate-800 transition";
+                acrossBtn.className = "flex-1 py-3 text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition";
+            }
+            updateCellHighlights();
+        }
+
+        function startTimer() {
+            state.elapsedSeconds = 0;
+            if (state.timerInterval) clearInterval(state.timerInterval);
+            state.timerInterval = setInterval(() => {
+                state.elapsedSeconds++;
+                const mins = Math.floor(state.elapsedSeconds / 60).toString().padStart(2, '0');
+                const secs = (state.elapsedSeconds % 60).toString().padStart(2, '0');
+                document.getElementById('game-timer').innerText = `${mins}:${secs}`;
+            }, 1000);
+        }
+
+        function checkPuzzle() {
+            let correct = true;
+            for (let r = 0; r < state.gridSize; r++) {
+                for (let c = 0; c < state.gridSize; c++) {
+                    const expected = state.puzzle.solution[r][c];
+                    if (expected !== '#') {
+                        const val = state.userGrid[`${r}-${c}`] || '';
+                        if (val !== expected) correct = false;
+                    }
+                }
+            }
+            if (correct) {
+                triggerVictory();
+            } else {
+                showModal('Keep Going!', 'Some letters are incorrect or missing. Keep collaborating!');
+            }
+        }
+
+        function checkWinCondition() {
+            for (let r = 0; r < state.gridSize; r++) {
+                for (let c = 0; c < state.gridSize; c++) {
+                    const expected = state.puzzle.solution[r][c];
+                    if (expected !== '#') {
+                        const val = state.userGrid[`${r}-${c}`] || '';
+                        if (val !== expected) return;
+                    }
+                }
+            }
+            triggerVictory();
+        }
+
+        function triggerVictory() {
+            if (state.timerInterval) clearInterval(state.timerInterval);
+            confetti({
+                particleCount: 150,
+                spread: 80,
+                origin: { y: 0.6 }
+            });
+            const mins = Math.floor(state.elapsedSeconds / 60);
+            const secs = state.elapsedSeconds % 60;
+            showModal('🎉 Puzzle Solved!', `Amazing teamwork! You completed the crossword in ${mins}m ${secs}s.`);
+        }
+
+        function revealLetter() {
+            const { r, c } = state.cursor;
+            const expected = state.puzzle.solution[r][c];
+            if (expected !== '#') {
+                state.userGrid[`${r}-${c}`] = expected;
+                const input = document.getElementById(`cell-${r}-${c}`);
+                if (input) input.value = expected;
+                broadcastCellUpdate(r, c, expected);
+                checkWinCondition();
+            }
+        }
+
+        function revealWord() {
+            const { r, c } = state.cursor;
+            // Reveal full current word in active direction
+            let cr = r, cc = c;
+            if (state.direction === 'across') {
+                while (cc > 0 && state.puzzle.solution[cr][cc - 1] !== '#') cc--;
+                while (cc < state.gridSize && state.puzzle.solution[cr][cc] !== '#') {
+                    const exp = state.puzzle.solution[cr][cc];
+                    state.userGrid[`${cr}-${cc}`] = exp;
+                    const input = document.getElementById(`cell-${cr}-${cc}`);
+                    if (input) input.value = exp;
+                    broadcastCellUpdate(cr, cc, exp);
+                    cc++;
+                }
+            } else {
+                while (cr > 0 && state.puzzle.solution[cr - 1][cc] !== '#') cr--;
+                while (cr < state.gridSize && state.puzzle.solution[cr][cc] !== '#') {
+                    const exp = state.puzzle.solution[cr][cc];
+                    state.userGrid[`${cr}-${cc}`] = exp;
+                    const input = document.getElementById(`cell-${cr}-${cc}`);
+                    if (input) input.value = exp;
+                    broadcastCellUpdate(cr, cc, exp);
+                    cr++;
+                }
+            }
+            checkWinCondition();
+        }
+
+        function backToRoomLobby() {
+            if (state.timerInterval) clearInterval(state.timerInterval);
+            state.gameActive = false;
+            document.getElementById('view-game').classList.add('hidden');
+            document.getElementById('view-room').classList.remove('hidden');
+        }
+
+        // Chat functionality
+        function handleChatKey(e) {
+            if (e.key === 'Enter') sendChatMessage();
+        }
+
+        function sendChatMessage() {
+            const input = document.getElementById('chat-input');
+            const msg = input.value.trim();
+            if (!msg) return;
+            input.value = '';
+
+            appendChatMessage(state.username, msg, state.color);
+            broadcastData({ type: 'CHAT', username: state.username, message: msg, color: state.color });
+        }
+
+        function appendChatMessage(username, message, color) {
+            const container = document.getElementById('chat-messages');
+            const div = document.createElement('div');
+            div.className = "text-xs space-y-0.5";
+            div.innerHTML = `<span class="font-bold" style="color: ${color || '#6366f1'}">${username}:</span> <span class="text-slate-700 dark:text-slate-300">${escapeHtml(message)}</span>`;
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function escapeHtml(text) {
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+    </script>
+</body>
+</html>
