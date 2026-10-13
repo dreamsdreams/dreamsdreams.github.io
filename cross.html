@@ -32,9 +32,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; }
-        .cell-input {
-            caret-color: transparent;
-        }
+        .cell-input { caret-color: transparent; }
     </style>
 </head>
 <body class="h-full bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 flex flex-col transition-colors duration-200">
@@ -227,7 +225,6 @@
 
     </main>
 
-    <!-- Custom Modal / Alert Box -->
     <div id="custom-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white dark:bg-slate-800 max-w-sm w-full rounded-2xl shadow-2xl p-6 space-y-4 border border-slate-100 dark:border-slate-700 text-center">
             <h3 id="modal-title" class="text-lg font-bold">Notice</h3>
@@ -243,16 +240,6 @@
                 title: 'Tech & Coding',
                 category: 'Easy Start',
                 size: 7,
-                grid: [
-                    ['A','P','I','.','J','S','.'],
-                    ['.','.','.','.','A','V','A'],
-                    ['W','E','B','.','V','A','R'],
-                    ['.','.','.','.','A','.','S'],
-                    ['C','L','O','U','D','S','.'],
-                    ['.','.','.','.','.','.','.'],
-                    ['.','.','.','.','.','.','.']
-                ],
-                // Simplified miniature 7x7 crossword for fast co-op fun
                 solution: [
                     ['A','P','I','#','J','S','#'],
                     ['#','#','#','#','A','V','A'],
@@ -262,14 +249,6 @@
                     ['#','#','#','#','#','#','#'],
                     ['#','#','#','#','#','#','#']
                 ],
-                // A simplified representation where cells are active letters or '#' for black cells
-                cellsData: [
-                    {r:0, c:0, ans:'A', num:1}, {r:0, c:1, ans:'P', num:2}, {r:0, c:2, ans:'I', num:3}, {r:0, c:4, ans:'J', num:4}, {r:0, c:5, ans:'S', num:5},
-                    {r:1, c:4, ans:'A', num:4}, {r:1, c:5, ans:'V', num:6}, {r:1, c:6, ans:'A', num:7},
-                    {r:2, c:0, ans:'W', num:8}, {r:2, c:1, ans:'E', num:9}, {r:2, c:2, ans:'B', num:10}, {r:2, c:4, ans:'V'}, {r:2, c:5, ans:'A'}, {r:2, c:6, ans:'R'},
-                    {r:3, c:4, ans:'A'}, {r:3, c:6, ans:'S'},
-                    {r:4, c:0, ans:'C', num:11}, {r:4, c:1, ans:'L', num:12}, {r:4, c:2, ans:'O', num:13}, {r:4, c:3, ans:'U', num:14}, {r:4, c:4, ans:'D'}, {r:4, c:5, ans:'S'}
-                ],
                 clues: {
                     across: [
                         {num: 1, text: "Software interface acronym", answer: "API", row: 0, col: 0, len: 3},
@@ -277,7 +256,7 @@
                         {num: 11, text: "Hosted servers in the sky", answer: "CLOUDS", row: 4, col: 0, len: 6}
                     ],
                     down: [
-                        {num: 1, text: "Awake (slang)", answer: "WAKE", row: 0, col: 0, len: 1}, // simplified for demo
+                        {num: 1, text: "Awake (slang)", answer: "WAKE", row: 0, col: 0, len: 1},
                         {num: 4, text: "Language of the web browser", answer: "JAVA", row: 0, col: 4, len: 5},
                         {num: 5, text: "Common file format (.js)", answer: "JS", row: 0, col: 5, len: 1},
                         {num: 7, text: "Pirate's affirmative", answer: "AVAR", row: 1, col: 6, len: 3}
@@ -290,30 +269,11 @@
                 category: 'Popular',
                 size: 5,
                 solution: [
-                    ['C','A','T','#','#'],
-                    ['A','R','O','U','S'],
-                    ['T','E','N','T','S'],
-                    ['#','S','T','A','R'],
-                    ['#','#','S','P','Y']
-                ],
-                // We'll generate robust grid metadata programmatically or use template
-                size: 5
-            }
-        ];
-
-        // Fallback generator for robust mini 5x5 if custom
-        function getPuzzleTemplate(id) {
-            if (id === 'tech') return PUZZLES[0];
-            return {
-                id: 'classic',
-                title: 'Classic Mini',
-                size: 5,
-                solution: [
                     ['C','A','T','S','!'],
                     ['L','I','O','N','S'],
                     ['E','A','G','L','E'],
                     ['A','P','P','L','E'],
-                    ['TIGER'.split('')]
+                    ['T','I','G','E','R']
                 ],
                 clues: {
                     across: [
@@ -329,15 +289,19 @@
                         {num: 4, text: "Plural of leaf", answer: "LEAVES", row: 0, col: 3, len: 5}
                     ]
                 }
-            };
+            }
+        ];
+
+        function getPuzzleTemplate(id) {
+            const found = PUZZLES.find(p => p.id === id);
+            return found ? found : PUZZLES[0];
         }
 
-        // State Variables
         let state = {
             username: '',
             roomCode: '',
             isHost: false,
-            peers: {}, // peerId -> { username, color, cursor: {r, c} }
+            peers: {},
             myId: '',
             peer: null,
             connections: [],
@@ -346,13 +310,13 @@
             gameActive: false,
             gridSize: 5,
             puzzle: null,
-            userGrid: {}, // "r-c" -> letter
+            userGrid: {},
             cursor: { r: 0, c: 0 },
-            direction: 'across', // 'across' or 'down'
+            direction: 'across',
             startTime: null,
             timerInterval: null,
             elapsedSeconds: 0,
-            color: getRandomColor()
+            color: '#6366f1'
         };
 
         const PLAYER_COLORS = ['#6366f1', '#ec4899', '#10b981', '#f59e0b', '#8b5cf6'];
@@ -360,8 +324,8 @@
             return PLAYER_COLORS[Math.floor(Math.random() * PLAYER_COLORS.length)];
         }
 
-        // Initialize App on load
         window.onload = function() {
+            state.color = getRandomColor();
             const savedName = localStorage.getItem('cw_username');
             if (savedName) {
                 document.getElementById('input-username').value = savedName;
@@ -428,17 +392,13 @@
         function initPeerConnection(isHost) {
             updateConnectionStatus('connecting', 'Connecting to network...');
             
-            // Using PeerJS public cloud server with room prefix
-            const peerId = isHost ? `cw-${state.roomCode}` : `cw-${state.roomCode}-${Math.random().toString(36.substring(2, 6))}`;
+            const peerId = isHost ? ('cw-' + state.roomCode) : undefined;
             
-            // Clean up existing peer if any
             if (state.peer) {
                 state.peer.destroy();
             }
 
-            state.peer = new Peer(isHost ? `cw-${state.roomCode}` : undefined, {
-                debug: 1
-            });
+            state.peer = new Peer(peerId, { debug: 1 });
 
             state.peer.on('open', (id) => {
                 state.myId = id;
@@ -448,8 +408,7 @@
                     state.players = [{ id: state.myId, username: state.username, color: state.color, isHost: true }];
                     enterRoomView();
                 } else {
-                    // Connect to host
-                    const hostPeerId = `cw-${state.roomCode}`;
+                    const hostPeerId = 'cw-' + state.roomCode;
                     const conn = state.peer.connect(hostPeerId, { reliable: true });
                     setupConnection(conn, true);
                 }
@@ -463,9 +422,9 @@
                 console.error(err);
                 updateConnectionStatus('error', 'Connection Error');
                 if (err.type === 'unavailable-id') {
-                    showModal('Room Taken', 'This room code is already active. Try another or join it.');
+                    showModal('Room Taken', 'This room code is already active.');
                 } else if (err.type === 'peer-unavailable') {
-                    showModal('Room Not Found', 'Could not find a room with code ' + state.roomCode + '. Check the code and try again.');
+                    showModal('Room Not Found', 'Could not find a room with code ' + state.roomCode + '.');
                 } else {
                     showModal('Connection Error', err.message);
                 }
@@ -476,7 +435,6 @@
             conn.on('open', () => {
                 if (isClient) {
                     state.connections.push(conn);
-                    // Send join request
                     conn.send({ type: 'JOIN', username: state.username, color: state.color, id: state.myId });
                 } else {
                     state.connections.push(conn);
@@ -490,7 +448,6 @@
             conn.on('close', () => {
                 state.connections = state.connections.filter(c => c !== conn);
                 if (state.isHost) {
-                    // Remove player and broadcast update
                     state.players = state.players.filter(p => p.id !== conn.peer);
                     broadcastState();
                     updatePlayersList();
@@ -520,7 +477,7 @@
                 startPuzzleGame(data.puzzleId, false);
             } else if (data.type === 'CELL_UPDATE') {
                 state.userGrid[data.key] = data.letter;
-                const cellInput = document.getElementById(`cell-${data.key}`);
+                const cellInput = document.getElementById('cell-' + data.key);
                 if (cellInput) {
                     cellInput.value = data.letter;
                     cellInput.classList.add('bg-indigo-50', 'dark:bg-indigo-950/30');
@@ -557,11 +514,11 @@
         function updateConnectionStatus(status, text) {
             const badge = document.getElementById('connection-status');
             const txt = document.getElementById('status-text');
-            badge.className = `hidden sm:flex items-center space-x-2 text-xs px-3 py-1.5 rounded-full font-medium ${
+            badge.className = 'hidden sm:flex items-center space-x-2 text-xs px-3 py-1.5 rounded-full font-medium ' + (
                 status === 'connected' ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300' :
                 status === 'connecting' ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300' :
                 'bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300'
-            }`;
+            );
             txt.innerText = text;
         }
 
@@ -600,30 +557,30 @@
         function updatePlayersList() {
             const container = document.getElementById('players-list');
             document.getElementById('player-count').innerText = state.players.length;
-            container.innerHTML = state.players.map(p => `
-                <div class="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-700">
-                    <div class="flex items-center space-x-3">
-                        <div class="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm shadow" style="background-color: ${p.color || '#6366f1'}">
-                            ${p.username.charAt(0).toUpperCase()}
-                        </div>
-                        <div>
-                            <p class="font-semibold text-sm">${p.username} ${p.id === state.myId ? '(You)' : ''}</p>
-                            <p class="text-xs text-slate-400">${p.isHost ? 'Host' : 'Player'}</p>
-                        </div>
-                    </div>
-                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                </div>
-            `).join('');
+            container.innerHTML = state.players.map(p => 
+                '<div class="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-700">' +
+                    '<div class="flex items-center space-x-3">' +
+                        '<div class="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm shadow" style="background-color: ' + (p.color || '#6366f1') + '">' +
+                            p.username.charAt(0).toUpperCase() +
+                        '</div>' +
+                        '<div>' +
+                            '<p class="font-semibold text-sm">' + p.username + ' ' + (p.id === state.myId ? '(You)' : '') + '</p>' +
+                            '<p class="text-xs text-slate-400">' + (p.isHost ? 'Host' : 'Player') + '</p>' +
+                        '</div>' +
+                    '</div>' +
+                    '<span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>' +
+                '</div>'
+            ).join('');
         }
 
         function renderPuzzleOptions() {
             const list = document.getElementById('puzzle-options-list');
-            list.innerHTML = PUZZLES.map(p => `
-                <div onclick="selectPuzzle('${p.id}')" id="puzzle-card-${p.id}" class="cursor-pointer p-4 rounded-xl border transition ${p.id === state.selectedPuzzleId ? 'border-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/20' : 'border-slate-200 dark:border-slate-700 hover:border-slate-300'}">
-                    <span class="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">${p.category}</span>
-                    <h4 class="font-bold text-base mt-1">${p.title}</h4>
-                </div>
-            `).join('');
+            list.innerHTML = PUZZLES.map(p => 
+                '<div onclick="selectPuzzle(\'' + p.id + '\')" id="puzzle-card-' + p.id + '" class="cursor-pointer p-4 rounded-xl border transition ' + (p.id === state.selectedPuzzleId ? 'border-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/20' : 'border-slate-200 dark:border-slate-700 hover:border-slate-300') + '">' +
+                    '<span class="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">' + p.category + '</span>' +
+                    '<h4 class="font-bold text-base mt-1">' + p.title + '</h4>' +
+                '</div>'
+            ).join('');
         }
 
         function selectPuzzle(id) {
@@ -652,14 +609,12 @@
             buildGridDOM();
             renderClues();
             startTimer();
-
-            // Set initial cursor
             setCursor(0, 0);
         }
 
         function buildGridDOM() {
             const gridEl = document.getElementById('crossword-grid');
-            gridEl.style.gridTemplateColumns = `repeat(${state.gridSize}, minmax(0, 1fr))`;
+            gridEl.style.gridTemplateColumns = 'repeat(' + state.gridSize + ', minmax(0, 1fr))';
             gridEl.innerHTML = '';
 
             for (let r = 0; r < state.gridSize; r++) {
@@ -668,13 +623,12 @@
                     const isBlack = ans === '#';
 
                     const cellDiv = document.createElement('div');
-                    cellDiv.className = `relative w-10 h-10 sm:w-12 sm:h-12 border border-slate-300 dark:border-slate-600 flex items-center justify-center ${
+                    cellDiv.className = 'relative w-10 h-10 sm:w-12 sm:h-12 border border-slate-300 dark:border-slate-600 flex items-center justify-center ' + (
                         isBlack ? 'bg-slate-900 dark:bg-slate-950 cursor-not-allowed' : 'bg-white dark:bg-slate-800 cursor-pointer focus-within:ring-2 focus-within:ring-indigo-500'
-                    }`;
-                    cellDiv.id = `cell-wrapper-${r}-${c}`;
+                    );
+                    cellDiv.id = 'cell-wrapper-' + r + '-' + c;
 
                     if (!isBlack) {
-                        // Find clue number if applicable
                         let clueNum = '';
                         if (state.puzzle.clues) {
                             for (let dir in state.puzzle.clues) {
@@ -683,15 +637,14 @@
                             }
                         }
 
-                        cellDiv.innerHTML = `
-                            ${clueNum ? `<span class="absolute top-0.5 left-1 text-[10px] font-bold text-slate-400 pointer-events-none">${clueNum}</span>` : ''}
-                            <input type="text" maxlength="1" id="cell-${r}-${c}" 
-                                class="cell-input w-full h-full text-center uppercase font-bold text-lg bg-transparent focus:outline-none text-slate-800 dark:text-slate-100"
-                                onfocus="onCellFocus(${r}, ${c})"
-                                onkeydown="handleCellKeyDown(event, ${r}, ${c})"
-                                oninput="handleCellInput(event, ${r}, ${c})">
-                            <div id="cursor-${r}-${c}" class="absolute inset-0 pointer-events-none border-2 border-transparent transition-all"></div>
-                        `;
+                        cellDiv.innerHTML = 
+                            (clueNum ? '<span class="absolute top-0.5 left-1 text-[10px] font-bold text-slate-400 pointer-events-none">' + clueNum + '</span>' : '') +
+                            '<input type="text" maxlength="1" id="cell-' + r + '-' + c + '" ' +
+                                'class="cell-input w-full h-full text-center uppercase font-bold text-lg bg-transparent focus:outline-none text-slate-800 dark:text-slate-100" ' +
+                                'onfocus="onCellFocus(' + r + ', ' + c + ')" ' +
+                                'onkeydown="handleCellKeyDown(event, ' + r + ', ' + c + ')" ' +
+                                'oninput="handleCellInput(event, ' + r + ', ' + c + ')">' +
+                            '<div id="cursor-' + r + '-' + c + '" class="absolute inset-0 pointer-events-none border-2 border-transparent transition-all"></div>';
                     }
                     gridEl.appendChild(cellDiv);
                 }
@@ -708,7 +661,7 @@
         function setCursor(r, c) {
             if (r < 0 || r >= state.gridSize || c < 0 || c >= state.gridSize) return;
             if (state.puzzle.solution[r][c] === '#') return;
-            const input = document.getElementById(`cell-${r}-${c}`);
+            const input = document.getElementById('cell-' + r + '-' + c);
             if (input) {
                 input.focus();
                 input.select();
@@ -716,37 +669,34 @@
         }
 
         function updateCellHighlights() {
-            // Clear all highlights
             for (let r = 0; r < state.gridSize; r++) {
                 for (let c = 0; c < state.gridSize; c++) {
-                    const wrap = document.getElementById(`cell-wrapper-${r}-${c}`);
+                    const wrap = document.getElementById('cell-wrapper-' + r + '-' + c);
                     if (wrap && !wrap.classList.contains('bg-slate-900')) {
                         wrap.classList.remove('bg-indigo-50', 'dark:bg-indigo-950/40', 'bg-indigo-100', 'dark:bg-indigo-900/40');
                     }
                 }
             }
 
-            // Highlight word in current direction
             const { r, c } = state.cursor;
             let cr = r, cc = c;
             if (state.direction === 'across') {
                 while (cc > 0 && state.puzzle.solution[cr][cc - 1] !== '#') cc--;
                 while (cc < state.gridSize && state.puzzle.solution[cr][cc] !== '#') {
-                    const w = document.getElementById(`cell-wrapper-${cr}-${cc}`);
+                    const w = document.getElementById('cell-wrapper-' + cr + '-' + cc);
                     if (w) w.classList.add('bg-indigo-50', 'dark:bg-indigo-950/40');
                     cc++;
                 }
             } else {
                 while (cr > 0 && state.puzzle.solution[cr - 1][cc] !== '#') cr--;
                 while (cr < state.gridSize && state.puzzle.solution[cr][cc] !== '#') {
-                    const w = document.getElementById(`cell-wrapper-${cr}-${cc}`);
+                    const w = document.getElementById('cell-wrapper-' + cr + '-' + cc);
                     if (w) w.classList.add('bg-indigo-50', 'dark:bg-indigo-950/40');
                     cr++;
                 }
             }
 
-            // Highlight exact active cell
-            const activeWrap = document.getElementById(`cell-wrapper-${r}-${c}`);
+            const activeWrap = document.getElementById('cell-wrapper-' + r + '-' + c);
             if (activeWrap) {
                 activeWrap.classList.remove('bg-indigo-50', 'dark:bg-indigo-950/40');
                 activeWrap.classList.add('bg-indigo-100', 'dark:bg-indigo-900/40');
@@ -778,13 +728,12 @@
                 toggleDirection();
             } else if (e.key === 'Backspace') {
                 e.preventDefault();
-                const key = `${r}-${c}`;
+                const key = r + '-' + c;
                 state.userGrid[key] = '';
-                const input = document.getElementById(`cell-${r}-${c}`);
+                const input = document.getElementById('cell-' + r + '-' + c);
                 if (input) input.value = '';
                 broadcastCellUpdate(r, c, '');
 
-                // Move backward
                 if (state.direction === 'across') {
                     setCursor(r, c - 1);
                 } else {
@@ -796,13 +745,12 @@
         function handleCellInput(e, r, c) {
             const val = e.target.value.toUpperCase().slice(-1);
             e.target.value = val;
-            const key = `${r}-${c}`;
+            const key = r + '-' + c;
             state.userGrid[key] = val;
 
             broadcastCellUpdate(r, c, val);
 
             if (val) {
-                // Advance forward
                 if (state.direction === 'across') {
                     setCursor(r, c + 1);
                 } else {
@@ -814,7 +762,7 @@
         }
 
         function broadcastCellUpdate(r, c, letter) {
-            const key = `${r}-${c}`;
+            const key = r + '-' + c;
             broadcastData({ type: 'CELL_UPDATE', key, letter });
         }
 
@@ -829,19 +777,17 @@
         }
 
         function renderCursors() {
-            // Remove old remote cursor borders
             for (let r = 0; r < state.gridSize; r++) {
                 for (let c = 0; c < state.gridSize; c++) {
-                    const cur = document.getElementById(`cursor-${r}-${c}`);
+                    const cur = document.getElementById('cursor-' + r + '-' + c);
                     if (cur) cur.style.borderColor = 'transparent';
                 }
             }
 
-            // Apply remote cursors
             for (let id in state.peers) {
                 const p = state.peers[id];
                 if (p && p.cursor) {
-                    const cur = document.getElementById(`cursor-${p.cursor.r}-${p.cursor.c}`);
+                    const cur = document.getElementById('cursor-' + p.cursor.r + '-' + p.cursor.c);
                     if (cur) {
                         cur.style.borderColor = p.color;
                     }
@@ -855,12 +801,12 @@
 
             let html = '<div class="space-y-4">';
             ['across', 'down'].forEach(dir => {
-                html += `<div id="clue-section-${dir}" class="space-y-2"><h5 class="text-xs font-bold uppercase tracking-wider text-slate-400">${dir}</h5><div class="space-y-1">`;
+                html += '<div id="clue-section-' + dir + '" class="space-y-2"><h5 class="text-xs font-bold uppercase tracking-wider text-slate-400">' + dir + '</h5><div class="space-y-1">';
                 state.puzzle.clues[dir].forEach(cl => {
-                    html += `<div onclick="jumpToClue(${cl.row}, ${cl.col}, '${dir}')" class="p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer transition text-xs flex space-x-2">
-                        <span class="font-bold text-indigo-600 dark:text-indigo-400 w-5">${cl.num}.</span>
-                        <span class="flex-1">${cl.text}</span>
-                    </div>`;
+                    html += '<div onclick="jumpToClue(' + cl.row + ', ' + cl.col + ', \'' + dir + '\')" class="p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer transition text-xs flex space-x-2">' +
+                        '<span class="font-bold text-indigo-600 dark:text-indigo-400 w-5">' + cl.num + '.</span>' +
+                        '<span class="flex-1">' + cl.text + '</span>' +
+                    '</div>';
                 });
                 html += '</div></div>';
             });
@@ -877,7 +823,6 @@
         function updateActiveClueDisplay() {
             if (!state.puzzle.clues) return;
             const { r, c } = state.cursor;
-            // Find active clue for current cell and direction
             const cluesList = state.puzzle.clues[state.direction] || [];
             let matched = cluesList.find(cl => {
                 if (state.direction === 'across') {
@@ -888,7 +833,7 @@
             });
 
             if (matched) {
-                document.getElementById('current-clue-number').innerText = `${state.direction.toUpperCase()} ${matched.num}`;
+                document.getElementById('current-clue-number').innerText = state.direction.toUpperCase() + ' ' + matched.num;
                 document.getElementById('current-clue-text').innerText = matched.text;
             }
         }
@@ -915,7 +860,7 @@
                 state.elapsedSeconds++;
                 const mins = Math.floor(state.elapsedSeconds / 60).toString().padStart(2, '0');
                 const secs = (state.elapsedSeconds % 60).toString().padStart(2, '0');
-                document.getElementById('game-timer').innerText = `${mins}:${secs}`;
+                document.getElementById('game-timer').innerText = mins + ':' + secs;
             }, 1000);
         }
 
@@ -925,7 +870,7 @@
                 for (let c = 0; c < state.gridSize; c++) {
                     const expected = state.puzzle.solution[r][c];
                     if (expected !== '#') {
-                        const val = state.userGrid[`${r}-${c}`] || '';
+                        const val = state.userGrid[r + '-' + c] || '';
                         if (val !== expected) correct = false;
                     }
                 }
@@ -942,7 +887,7 @@
                 for (let c = 0; c < state.gridSize; c++) {
                     const expected = state.puzzle.solution[r][c];
                     if (expected !== '#') {
-                        const val = state.userGrid[`${r}-${c}`] || '';
+                        const val = state.userGrid[r + '-' + c] || '';
                         if (val !== expected) return;
                     }
                 }
@@ -952,22 +897,18 @@
 
         function triggerVictory() {
             if (state.timerInterval) clearInterval(state.timerInterval);
-            confetti({
-                particleCount: 150,
-                spread: 80,
-                origin: { y: 0.6 }
-            });
+            confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
             const mins = Math.floor(state.elapsedSeconds / 60);
             const secs = state.elapsedSeconds % 60;
-            showModal('🎉 Puzzle Solved!', `Amazing teamwork! You completed the crossword in ${mins}m ${secs}s.`);
+            showModal('🎉 Puzzle Solved!', 'Amazing teamwork! You completed the crossword in ' + mins + 'm ' + secs + 's.');
         }
 
         function revealLetter() {
             const { r, c } = state.cursor;
             const expected = state.puzzle.solution[r][c];
             if (expected !== '#') {
-                state.userGrid[`${r}-${c}`] = expected;
-                const input = document.getElementById(`cell-${r}-${c}`);
+                state.userGrid[r + '-' + c] = expected;
+                const input = document.getElementById('cell-' + r + '-' + c);
                 if (input) input.value = expected;
                 broadcastCellUpdate(r, c, expected);
                 checkWinCondition();
@@ -976,14 +917,13 @@
 
         function revealWord() {
             const { r, c } = state.cursor;
-            // Reveal full current word in active direction
             let cr = r, cc = c;
             if (state.direction === 'across') {
                 while (cc > 0 && state.puzzle.solution[cr][cc - 1] !== '#') cc--;
                 while (cc < state.gridSize && state.puzzle.solution[cr][cc] !== '#') {
                     const exp = state.puzzle.solution[cr][cc];
-                    state.userGrid[`${cr}-${cc}`] = exp;
-                    const input = document.getElementById(`cell-${cr}-${cc}`);
+                    state.userGrid[cr + '-' + cc] = exp;
+                    const input = document.getElementById('cell-' + cr + '-' + cc);
                     if (input) input.value = exp;
                     broadcastCellUpdate(cr, cc, exp);
                     cc++;
@@ -992,8 +932,8 @@
                 while (cr > 0 && state.puzzle.solution[cr - 1][cc] !== '#') cr--;
                 while (cr < state.gridSize && state.puzzle.solution[cr][cc] !== '#') {
                     const exp = state.puzzle.solution[cr][cc];
-                    state.userGrid[`${cr}-${cc}`] = exp;
-                    const input = document.getElementById(`cell-${cr}-${cc}`);
+                    state.userGrid[cr + '-' + cc] = exp;
+                    const input = document.getElementById('cell-' + cr + '-' + cc);
                     if (input) input.value = exp;
                     broadcastCellUpdate(cr, cc, exp);
                     cr++;
@@ -1009,7 +949,6 @@
             document.getElementById('view-room').classList.remove('hidden');
         }
 
-        // Chat functionality
         function handleChatKey(e) {
             if (e.key === 'Enter') sendChatMessage();
         }
@@ -1028,7 +967,7 @@
             const container = document.getElementById('chat-messages');
             const div = document.createElement('div');
             div.className = "text-xs space-y-0.5";
-            div.innerHTML = `<span class="font-bold" style="color: ${color || '#6366f1'}">${username}:</span> <span class="text-slate-700 dark:text-slate-300">${escapeHtml(message)}</span>`;
+            div.innerHTML = '<span class="font-bold" style="color: ' + (color || '#6366f1') + '">' + username + ':</span> <span class="text-slate-700 dark:text-slate-300">' + escapeHtml(message) + '</span>';
             container.appendChild(div);
             container.scrollTop = container.scrollHeight;
         }
